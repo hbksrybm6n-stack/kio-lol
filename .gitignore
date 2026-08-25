@@ -3,6 +3,9 @@ dist/
 data.db
 data.db-wal
 data.db-shm
+data.sqlite
+data.sqlite-wal
+data.sqlite-shm
 uploads/avatars/*
 uploads/banners/*
 uploads/links/*
@@ -10,5 +13,6 @@ uploads/links/*
 !uploads/banners/.gitkeep
 !uploads/links/.gitkeep
 .env
+.env.local
 .vercel/
 *.log

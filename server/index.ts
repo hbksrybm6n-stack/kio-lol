@@ -29,6 +29,9 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {
   immutable: true,
 }));
 
+const distPath = path.join(__dirname, '..', 'dist');
+app.use(express.static(distPath));
+
 app.use('/api/auth', authRoutes);
 app.use('/api/profiles', profileRoutes);
 app.use('/api/links', linkRoutes);
@@ -42,6 +45,12 @@ app.use('/api/discord', discordRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/api/') && !req.path.startsWith('/uploads/')) {
+    res.sendFile(path.join(distPath, 'index.html'));
+  }
 });
 
 app.listen(PORT, () => {
