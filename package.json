@@ -26,6 +26,7 @@
     "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.8.2",
     "tailwindcss": "^4.3.3",
+    "tsx": "^4.20.4",
     "uuid": "^11.1.0",
     "zustand": "^5.0.5"
   },
@@ -42,7 +43,6 @@
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^6.1.0",
     "concurrently": "^10.0.5",
-    "tsx": "^4.20.4",
     "typescript": "^5.8.3",
     "vite": "^8.2.2"
   }
