@@ -223,13 +223,7 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              {/* Views */}
-              {config?.show_views && (profile.view_count || 0) > 0 && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="flex items-center gap-1.5 mt-8 text-[11px] text-[#3f3f46]" style={{ fontFamily: font }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
-                  <span>{profile.view_count.toLocaleString()} views</span>
-                </motion.div>
-              )}
+              {/* Views - hidden completely */}
             </div>
           </motion.div>
         )}
