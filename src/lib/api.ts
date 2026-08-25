@@ -246,6 +246,16 @@ export const reportsApi = {
   },
 };
 
+export const leaderboardApi = {
+  async getTop() {
+    const data = await apiFetch('/leaderboard');
+    return data.data as Array<{
+      id: string; username: string; display_name: string; avatar_url: string;
+      view_count: number; link_count: number; badge_count: number;
+    }>;
+  },
+};
+
 export const uploadApi = {
   async upload(file: File, type: 'avatar' | 'banner' | 'link') {
     const MAX_UPLOAD_SIZE = 200 * 1024 * 1024; // 200 MB
