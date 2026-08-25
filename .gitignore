@@ -1,0 +1,14 @@
+node_modules/
+dist/
+data.db
+data.db-wal
+data.db-shm
+uploads/avatars/*
+uploads/banners/*
+uploads/links/*
+!uploads/avatars/.gitkeep
+!uploads/banners/.gitkeep
+!uploads/links/.gitkeep
+.env
+.vercel/
+*.log
