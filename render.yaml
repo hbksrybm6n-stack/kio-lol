@@ -3,6 +3,7 @@ services:
     name: kio-lol
     runtime: node
     plan: free
+    branch: main
     buildCommand: npm install && npm run build
     startCommand: node --import tsx server/index.ts
     envVars:
