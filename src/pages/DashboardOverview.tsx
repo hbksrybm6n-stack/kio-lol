@@ -70,7 +70,7 @@ export default function DashboardOverview() {
             {loading ? (
               <div className="h-7 w-14 rounded-md bg-white/[0.04] animate-shimmer mb-1" />
             ) : (
-              <p className="text-2xl font-extrabold text-white tracking-tight">{s.value.toLocaleString()}</p>
+              <p className="text-2xl font-extrabold text-white tracking-tight">{s.value > 0 ? s.value.toLocaleString() : "—"}</p>
             )}
             <p className="text-[12px] text-[#52525b] mt-0.5">{s.label}</p>
           </div>

@@ -150,10 +150,12 @@ export default function LandingPage() {
                         {l.link_count}
                       </span>
                     )}
-                    <span className="flex items-center gap-1 text-[11px] text-[#71717a] font-medium tabular-nums">
-                      <Eye size={12} />
-                      {l.view_count.toLocaleString()}
-                    </span>
+                    {l.view_count > 0 && (
+                      <span className="flex items-center gap-1 text-[11px] text-[#71717a] font-medium tabular-nums">
+                        <Eye size={12} />
+                        {l.view_count.toLocaleString()}
+                      </span>
+                    )}
                   </div>
                 </Link>
               ))}
