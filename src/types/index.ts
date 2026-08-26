@@ -167,7 +167,9 @@ export interface Report {
 export type SocialPlatform = 
   | 'discord' | 'github' | 'twitter' | 'youtube' | 'tiktok' 
   | 'instagram' | 'twitch' | 'telegram' | 'spotify' | 'linkedin'
-  | 'email' | 'website' | 'other';
+  | 'email' | 'website' | 'other' | 'snapchat' | 'reddit'
+  | 'pinterest' | 'facebook' | 'mastodon' | 'threads' | 'kick'
+  | 'bluesky' | 'paypal' | 'cashapp' | 'venmo';
 
 export const SOCIAL_PLATFORMS: Record<SocialPlatform, { name: string; color: string; icon: string }> = {
   discord: { name: 'Discord', color: '#5865F2', icon: 'discord' },
@@ -180,6 +182,17 @@ export const SOCIAL_PLATFORMS: Record<SocialPlatform, { name: string; color: str
   telegram: { name: 'Telegram', color: '#26A5E4', icon: 'telegram' },
   spotify: { name: 'Spotify', color: '#1DB954', icon: 'spotify' },
   linkedin: { name: 'LinkedIn', color: '#0A66C2', icon: 'linkedin' },
+  snapchat: { name: 'Snapchat', color: '#FFFC00', icon: 'snapchat' },
+  reddit: { name: 'Reddit', color: '#FF4500', icon: 'reddit' },
+  pinterest: { name: 'Pinterest', color: '#E60023', icon: 'pinterest' },
+  facebook: { name: 'Facebook', color: '#1877F2', icon: 'facebook' },
+  mastodon: { name: 'Mastodon', color: '#6364FF', icon: 'mastodon' },
+  threads: { name: 'Threads', color: '#ffffff', icon: 'threads' },
+  kick: { name: 'Kick', color: '#53F327', icon: 'kick' },
+  bluesky: { name: 'Bluesky', color: '#0085FF', icon: 'bluesky' },
+  paypal: { name: 'PayPal', color: '#003087', icon: 'paypal' },
+  cashapp: { name: 'Cash App', color: '#00D632', icon: 'cashapp' },
+  venmo: { name: 'Venmo', color: '#3D95CE', icon: 'venmo' },
   email: { name: 'Email', color: '#EA4335', icon: 'mail' },
   website: { name: 'Website', color: '#6B7280', icon: 'globe' },
   other: { name: 'Other', color: '#8B5CF6', icon: 'link' },
