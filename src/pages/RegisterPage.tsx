@@ -30,6 +30,7 @@ export default function RegisterPage() {
   const [verifyCode, setVerifyCode] = useState(["", "", "", "", "", ""]);
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [devCode, setDevCode] = useState("");
   const codeRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const [username, setUsername] = useState("");
@@ -93,6 +94,7 @@ export default function RegisterPage() {
     try {
       const data = await authApi.register(email, password, username);
       setPendingId(data.pendingId);
+      setDevCode(data.code || "");
       setStep("verify");
       setResendCooldown(60);
       toast.success("Verification code sent to your email");
@@ -163,8 +165,9 @@ export default function RegisterPage() {
   async function handleResend() {
     if (resendCooldown > 0) return;
     try {
-      await authApi.registerResend(pendingId);
+      const data = await authApi.registerResend(pendingId);
       setResendCooldown(60);
+      if (data.code) setDevCode(data.code);
       toast.success("New code sent!");
     } catch (err: any) {
       toast.error(err?.message || "Failed to resend");
@@ -175,6 +178,7 @@ export default function RegisterPage() {
     setStep("form");
     setVerifyCode(["", "", "", "", "", ""]);
     setPendingId("");
+    setDevCode("");
   }
 
   if (step === "verify") {
@@ -199,6 +203,14 @@ export default function RegisterPage() {
             We sent a 6-digit code to
           </p>
           <p className="text-sm text-white text-center font-medium mb-8">{email}</p>
+
+          {devCode && (
+            <div className="mb-6 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] p-4 text-center">
+              <p className="text-[11px] text-amber-400 font-semibold uppercase tracking-wider mb-2">Your verification code</p>
+              <p className="text-3xl font-bold text-white tracking-[8px] font-mono select-all">{devCode}</p>
+              <p className="text-[11px] text-[#52525b] mt-2">Copy this code — email sending is not configured</p>
+            </div>
+          )}
 
           <div className="flex justify-center gap-3 mb-6">
             {verifyCode.map((digit, i) => (
