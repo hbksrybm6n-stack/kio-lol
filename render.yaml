@@ -13,4 +13,20 @@ services:
         value: production
       - key: PORT
         value: 10000
+      - key: APP_URL
+        value: https://kio.lol
+      - key: SMTP_HOST
+        value: smtp.mailum.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        value: "kio.lol <noreply@kio.lol>"
+      - key: CAPTCHA_SECRET
+        value: kio-lol-captcha-2026-secret
     healthCheckPath: /api/health
