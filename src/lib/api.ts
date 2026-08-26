@@ -420,7 +420,7 @@ export const adminExtendedApi = {
     return apiFetch(`/admin-extended/announcements/${id}`, { method: 'DELETE' });
   },
   async addStaffNote(userId: string, note: string) {
-    return apiFetch('/admin-extended/staff-notes', { method: 'POST', body: JSON.stringify({ userId, note }) });
+    return apiFetch('/admin-extended/staff-notes', { method: 'POST', body: JSON.stringify({ target_user_id: userId, note }) });
   },
   async getStaffNotes(userId: string) {
     return apiFetch(`/admin-extended/staff-notes/${userId}`);

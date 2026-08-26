@@ -625,6 +625,7 @@ migrateColumn('profiles', 'share_enabled', 'INTEGER', '1');
 migrateColumn('profiles', 'is_deactivated', 'INTEGER', '0');
 migrateColumn('profiles', 'role', 'TEXT', "'user'");
 migrateColumn('profiles', 'premium_until', 'TEXT', "''");
+migrateColumn('profiles', 'premium_plan', 'TEXT', "''");
 migrateColumn('profiles', 'preferred_theme', 'TEXT', "'dark'");
 
 migrateColumn('profile_config', 'card_background', 'TEXT', "''");

@@ -25,6 +25,7 @@ import moderationRoutes from './routes/moderation.js';
 import notificationRoutes from './routes/notifications.js';
 import publicApiRoutes from './routes/public-api.js';
 import captchaRoutes from './routes/captcha.js';
+import premiumRoutes from './routes/premium.js';
 
 import { antiSpam } from './middleware/security.js';
 import db from './db.js';
@@ -141,6 +142,7 @@ app.use('/api/moderation', moderationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/public-api', publicApiRoutes);
 app.use('/api/captcha', captchaRoutes);
+app.use('/api/premium', premiumRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

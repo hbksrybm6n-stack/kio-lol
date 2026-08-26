@@ -114,8 +114,9 @@ export default function AdminDashboard() {
       if (activeTab === "badges") loadBadges();
       if (activeTab === "audit") loadAuditLogs();
       if (activeTab === "announcements") loadAnnouncements();
+      if (activeTab === "notes") loadUsers();
       if (activeTab === "system") loadSystem();
-      if (activeTab === "premium") loadPremiumPlans();
+      if (activeTab === "premium") { loadPremiumPlans(); loadUsers(); }
     }
   }, [activeTab]);
 
@@ -165,7 +166,7 @@ export default function AdminDashboard() {
     setAuditLoading(true);
     try {
       const data = await adminExtendedApi.getAuditLogs(auditPage);
-      setAuditLogs(data || []);
+      setAuditLogs(data?.logs || data || []);
     } catch {
       toast.error("Failed to load audit logs");
     } finally {
@@ -1313,15 +1314,27 @@ export default function AdminDashboard() {
                   <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                     <div>
                       <p className="text-[11px] text-[#52525b] mb-1">Database Size</p>
-                      <p className="text-[14px] text-white font-medium">{sysHealth.dbSize || "N/A"}</p>
+                      <p className="text-[14px] text-white font-medium">{sysHealth.dbSizeFormatted || "N/A"}</p>
                     </div>
                     <div>
                       <p className="text-[11px] text-[#52525b] mb-1">Uptime</p>
-                      <p className="text-[14px] text-white font-medium">{sysHealth.uptime || "N/A"}</p>
+                      <p className="text-[14px] text-white font-medium">{typeof sysHealth.uptime === 'number' ? `${Math.floor(sysHealth.uptime / 3600)}h ${Math.floor((sysHealth.uptime % 3600) / 60)}m` : "N/A"}</p>
                     </div>
                     <div>
-                      <p className="text-[11px] text-[#52525b] mb-1">Memory Usage</p>
-                      <p className="text-[14px] text-white font-medium">{sysHealth.memoryUsage || "N/A"}</p>
+                      <p className="text-[11px] text-[#52525b] mb-1">Memory (RSS)</p>
+                      <p className="text-[14px] text-white font-medium">{sysHealth.memory?.rss || "N/A"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-[#52525b] mb-1">Heap Used</p>
+                      <p className="text-[14px] text-white font-medium">{sysHealth.memory?.heapUsed || "N/A"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-[#52525b] mb-1">Node Version</p>
+                      <p className="text-[14px] text-white font-medium">{sysHealth.nodeVersion || "N/A"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-[#52525b] mb-1">Platform</p>
+                      <p className="text-[14px] text-white font-medium">{sysHealth.platform || "N/A"}</p>
                     </div>
                   </div>
                 </div>
