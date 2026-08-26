@@ -562,6 +562,23 @@ export default function ProfilePage() {
                 textAlign: textAlign as any,
               }}
             >
+              {/* Banner */}
+              {profile.banner_url && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.05 }}
+                  className="w-full -mx-4 mb-4 sm:mx-0 sm:rounded-2xl overflow-hidden"
+                  style={{ maxWidth: cardWidth }}
+                >
+                  <img
+                    src={profile.banner_url}
+                    alt=""
+                    className="w-full h-[120px] sm:h-[160px] object-cover"
+                  />
+                </motion.div>
+              )}
+
               {/* Avatar */}
               {config?.show_avatar !== false && profile.avatar_url && (
                 <motion.div
@@ -571,17 +588,17 @@ export default function ProfilePage() {
                   className="mb-5"
                 >
                   <div className="relative">
+                    <div
+                      className="absolute -inset-[3px] rounded-full opacity-60"
+                      style={{
+                        background: `linear-gradient(135deg, ${config?.primary_color || '#8b5cf6'}, ${config?.secondary_color || '#ec4899'}, ${config?.accent_color || '#3b82f6'})`,
+                      }}
+                    />
                     <img
                       src={profile.avatar_url}
                       alt=""
-                      className="w-[100px] h-[100px] rounded-full object-cover"
+                      className="relative w-[100px] h-[100px] rounded-full object-cover border-[3px] border-[#050505]"
                       style={{ boxShadow: "0 0 60px rgba(0,0,0,0.5)" }}
-                    />
-                    <div
-                      className="absolute inset-0 rounded-full"
-                      style={{
-                        boxShadow: `0 0 40px ${config?.primary_color || "#8b5cf6"}30`,
-                      }}
                     />
                   </div>
                 </motion.div>
@@ -736,11 +753,17 @@ export default function ProfilePage() {
                         href={social.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 hover:scale-110 hover:shadow-lg"
+                        className="w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 hover:scale-110"
                         style={{
                           backgroundColor: `${color}15`,
                           color,
                           boxShadow: `0 0 0 1px ${color}20`,
+                        }}
+                        onMouseEnter={(e) => {
+                          (e.currentTarget as HTMLElement).style.boxShadow = `0 0 20px ${color}30, 0 0 0 1px ${color}30`;
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLElement).style.boxShadow = `0 0 0 1px ${color}20`;
                         }}
                         title={platform?.name || social.platform}
                       >
@@ -1033,11 +1056,11 @@ function LinkComponent({
         rel={isPasswordProtected ? undefined : "noopener noreferrer"}
         onClick={handleClick}
         className={cn(
-          "group w-full flex items-center gap-3.5 px-4 font-medium transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
+          "group/link w-full flex items-center gap-3.5 px-4 font-medium transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden",
           linkSize,
           isExpired && "opacity-50",
           {
-            "hover:shadow-lg hover:shadow-purple-500/5": link.open_animation === "glow",
+            "hover:shadow-lg hover:shadow-purple-500/10": link.open_animation === "glow",
             "hover:animate-bounce": link.open_animation === "bounce",
             "hover:animate-pulse": link.open_animation === "pulse",
           }
@@ -1051,7 +1074,16 @@ function LinkComponent({
           borderRadius: `${borderRadius}px`,
         }}
       >
-        <span className="flex items-center gap-3 min-w-0 flex-1">
+        {(link.color || link.hover_color) && (
+          <span
+            className="absolute inset-0 opacity-0 group-hover/link:opacity-100 transition-opacity duration-300 pointer-events-none"
+            style={{
+              background: `linear-gradient(135deg, ${link.hover_color || link.color}08, ${link.hover_color || link.color}15)`,
+              borderRadius: `${borderRadius}px`,
+            }}
+          />
+        )}
+        <span className="relative z-10 flex items-center gap-3 min-w-0 flex-1">
           {isPasswordProtected && (
             <Lock size={12} className="text-[#52525b] shrink-0" />
           )}
@@ -1097,7 +1129,7 @@ function LinkComponent({
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
-          className="text-[#3f3f46] group-hover:text-[#71717a] shrink-0 transition-colors"
+          className="relative z-10 text-[#3f3f46] group-hover/link:text-[#71717a] shrink-0 transition-colors"
         >
           <path d="M7 17L17 7M17 7H7M17 7v10" />
         </svg>
