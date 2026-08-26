@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { v4 as uuid } from 'uuid';
+import bcrypt from 'bcryptjs';
 import db from '../db.js';
 import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
 
@@ -19,7 +20,22 @@ router.get('/profile/:profileId', (req, res) => {
   const filtered = (links as any[]).filter((link) => {
     if (link.scheduled_at && link.scheduled_at > now) return false;
     if (link.scheduled_end && link.scheduled_end < now) return false;
+    if (link.expiration && link.expiration < now) return false;
     return true;
+  }).map((link) => {
+    if (link.password && link.password !== '') {
+      return {
+        ...link,
+        url: undefined,
+        requires_password: true,
+        embed_html: link.embed_html || '',
+      };
+    }
+    return {
+      ...link,
+      requires_password: false,
+      embed_html: link.embed_html || '',
+    };
   });
 
   res.json(filtered);
@@ -121,16 +137,23 @@ router.post('/', authMiddleware, (req: AuthRequest, res) => {
   try {
     const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId!) as any;
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
-    const { title, url, description, icon, color, background_color, hover_color, animation, sort_order, is_active, group_id, thumbnail_url, scheduled_at, scheduled_end, visibility, target, open_animation } = req.body;
+    const { title, url, description, icon, color, background_color, hover_color, animation, sort_order, is_active, group_id, thumbnail_url, scheduled_at, scheduled_end, visibility, target, open_animation, password, expiration, redirect_url, embed_html } = req.body;
     if (!title || !url) return res.status(400).json({ error: 'Title and URL required' });
     const id = uuid();
-    db.prepare(`INSERT INTO links (id, profile_id, title, url, description, icon, color, background_color, hover_color, animation, sort_order, is_active, group_id, thumbnail_url, scheduled_at, scheduled_end, visibility, target, open_animation)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+
+    let passwordHash = '';
+    if (password) {
+      passwordHash = bcrypt.hashSync(password, 10);
+    }
+
+    db.prepare(`INSERT INTO links (id, profile_id, title, url, description, icon, color, background_color, hover_color, animation, sort_order, is_active, group_id, thumbnail_url, scheduled_at, scheduled_end, visibility, target, open_animation, password, expiration, redirect_url, embed_html)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
       id, profile.id, title, url, description || '', icon || '', color || '#8b5cf6',
       background_color || 'transparent', hover_color || '', animation || 'none',
       sort_order ?? 0, is_active !== undefined ? (is_active ? 1 : 0) : 1,
       group_id || '', thumbnail_url || '', scheduled_at || '', scheduled_end || '',
-      visibility || 'public', target || '_blank', open_animation || 'none'
+      visibility || 'public', target || '_blank', open_animation || 'none',
+      passwordHash, expiration || '', redirect_url || '', embed_html || ''
     );
     const link = db.prepare('SELECT * FROM links WHERE id = ?').get(id);
     res.json(link);
@@ -146,7 +169,7 @@ router.put('/:id', authMiddleware, (req: AuthRequest, res) => {
     const link = db.prepare('SELECT * FROM links WHERE id = ? AND profile_id = ?').get(req.params.id, profile.id);
     if (!link) return res.status(404).json({ error: 'Link not found' });
 
-    const fields = ['title', 'url', 'description', 'icon', 'color', 'background_color', 'hover_color', 'animation', 'sort_order', 'is_active', 'group_id', 'thumbnail_url', 'scheduled_at', 'scheduled_end', 'visibility', 'target', 'open_animation'];
+    const fields = ['title', 'url', 'description', 'icon', 'color', 'background_color', 'hover_color', 'animation', 'sort_order', 'is_active', 'group_id', 'thumbnail_url', 'scheduled_at', 'scheduled_end', 'visibility', 'target', 'open_animation', 'expiration', 'redirect_url', 'embed_html'];
     const updates: string[] = [];
     const values: any[] = [];
     for (const f of fields) {
@@ -155,6 +178,16 @@ router.put('/:id', authMiddleware, (req: AuthRequest, res) => {
         values.push(f === 'is_active' ? (req.body[f] ? 1 : 0) : req.body[f]);
       }
     }
+
+    if (req.body.password !== undefined) {
+      if (req.body.password === '' || req.body.password === null) {
+        updates.push("password = ''");
+      } else {
+        updates.push('password = ?');
+        values.push(bcrypt.hashSync(req.body.password, 10));
+      }
+    }
+
     if (updates.length > 0) {
       updates.push("updated_at = datetime('now')");
       values.push(req.params.id);
@@ -185,14 +218,33 @@ router.post('/reorder', authMiddleware, (req: AuthRequest, res) => {
   res.json({ ok: true });
 });
 
-router.post('/:id/click', async (req, res) => {
+router.post('/:id/unlock', (req, res) => {
   try {
     const link = db.prepare('SELECT * FROM links WHERE id = ?').get(req.params.id) as any;
-    if (!link) return res.json({ ok: true });
+    if (!link) return res.status(404).json({ error: 'Link not found' });
+    if (!link.password) return res.json({ url: link.url });
+
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: 'Password required' });
+
+    const valid = bcrypt.compareSync(password, link.password);
+    if (!valid) return res.status(403).json({ error: 'Invalid password' });
+
+    res.json({ url: link.url });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/r/:id', async (req, res) => {
+  try {
+    const link = db.prepare('SELECT * FROM links WHERE id = ?').get(req.params.id) as any;
+    if (!link) return res.status(404).json({ error: 'Link not found' });
 
     const now = new Date().toISOString();
-    if (link.scheduled_at && link.scheduled_at > now) return res.json({ ok: true });
-    if (link.scheduled_end && link.scheduled_end < now) return res.json({ ok: true });
+    if (link.expiration && link.expiration < now) {
+      return res.status(410).json({ error: 'Link has expired' });
+    }
 
     db.prepare('UPDATE links SET click_count = click_count + 1 WHERE id = ?').run(req.params.id);
     const today = new Date().toISOString().split('T')[0];
@@ -200,6 +252,7 @@ router.post('/:id/click', async (req, res) => {
       ON CONFLICT(profile_id, date) DO UPDATE SET link_clicks = link_clicks + 1`).run(uuid(), link.profile_id, today);
 
     const userAgent = String(req.headers['user-agent'] || '');
+    const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
     let deviceType = '';
     let browser = '';
     let os = '';
@@ -215,8 +268,51 @@ router.post('/:id/click', async (req, res) => {
       os = osInfo.name || '';
     } catch {}
 
-    db.prepare('INSERT INTO analytics (id, profile_id, event_type, link_id, visitor_agent, referer, device_type, browser, os) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
-      uuid(), link.profile_id, 'click', req.params.id, userAgent, String(req.headers['referer'] || ''), deviceType, browser, os
+    db.prepare('INSERT INTO analytics (id, profile_id, event_type, link_id, visitor_agent, visitor_ip, referer, device_type, browser, os) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+      uuid(), link.profile_id, 'click', req.params.id, userAgent, ip, String(req.headers['referer'] || ''), deviceType, browser, os
+    );
+
+    const redirectUrl = link.redirect_url || link.url;
+    res.redirect(302, redirectUrl);
+  } catch {
+    res.status(500).json({ error: 'Redirect failed' });
+  }
+});
+
+router.post('/:id/click', async (req, res) => {
+  try {
+    const link = db.prepare('SELECT * FROM links WHERE id = ?').get(req.params.id) as any;
+    if (!link) return res.json({ ok: true });
+
+    const now = new Date().toISOString();
+    if (link.scheduled_at && link.scheduled_at > now) return res.json({ ok: true });
+    if (link.scheduled_end && link.scheduled_end < now) return res.json({ ok: true });
+    if (link.expiration && link.expiration < now) return res.json({ ok: true });
+
+    db.prepare('UPDATE links SET click_count = click_count + 1 WHERE id = ?').run(req.params.id);
+    const today = new Date().toISOString().split('T')[0];
+    db.prepare(`INSERT INTO daily_stats (id, profile_id, date, link_clicks) VALUES (?, ?, ?, 1)
+      ON CONFLICT(profile_id, date) DO UPDATE SET link_clicks = link_clicks + 1`).run(uuid(), link.profile_id, today);
+
+    const userAgent = String(req.headers['user-agent'] || '');
+    const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+    let deviceType = '';
+    let browser = '';
+    let os = '';
+
+    try {
+      const UAParser = (await import('ua-parser-js')).default;
+      const parser = new UAParser(userAgent);
+      const device = parser.getDevice();
+      const browserInfo = parser.getBrowser();
+      const osInfo = parser.getOS();
+      deviceType = device.type || 'desktop';
+      browser = browserInfo.name || '';
+      os = osInfo.name || '';
+    } catch {}
+
+    db.prepare('INSERT INTO analytics (id, profile_id, event_type, link_id, visitor_agent, visitor_ip, referer, device_type, browser, os) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+      uuid(), link.profile_id, 'click', req.params.id, userAgent, String(req.headers['referer'] || ''), ip, deviceType, browser, os
     );
     res.json({ ok: true });
   } catch {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Volume2, VolumeX, Flag, Ban, Lock, Ghost } from "lucide-react";
+import { Volume2, VolumeX, Flag, Ban, Lock, Share2, Copy, Check, SkipBack, SkipForward, Shuffle } from "lucide-react";
 import {
   profileApi,
   configApi,
@@ -10,12 +10,15 @@ import {
   linkGroupsApi,
   moderationApi,
   reportsApi,
+  linksApi as linksApiRef,
 } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { SOCIAL_PLATFORMS, type SocialPlatform } from "@/types";
 import { SOCIAL_SVGS } from "@/lib/socialIcons";
 import { SnowEffect } from "@/components/effects/SnowEffect";
 import { ParticleEffect } from "@/components/effects/ParticleEffect";
+import AudioVisualizer from "@/components/AudioVisualizer";
+import ShareModal from "@/components/ShareModal";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 import type { LinkGroup } from "@/types";
@@ -31,6 +34,7 @@ export default function ProfilePage() {
   const [links, setLinks] = useState<any[]>([]);
   const [linkGroups, setLinkGroups] = useState<LinkGroup[]>([]);
   const [badges, setBadges] = useState<any[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [entered, setEntered] = useState(false);
@@ -44,6 +48,10 @@ export default function ProfilePage() {
   const [reportReason, setReportReason] = useState("");
   const [reportDescription, setReportDescription] = useState("");
   const [reportCategory, setReportCategory] = useState<string>("other");
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
+  const [linkPasswords, setLinkPasswords] = useState<Record<string, string>>({});
+  const [unlockingLinkId, setUnlockingLinkId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const hasMedia = !!(config?.music_url || config?.background_video_url);
 
@@ -68,12 +76,13 @@ export default function ProfilePage() {
         return;
       }
       setProfile(profileData);
-      const [configData, socialsData, linksData, badgesData, groupsData] = await Promise.all([
+      const [configData, socialsData, linksData, badgesData, groupsData, tagsData] = await Promise.all([
         configApi.getByProfileId(profileData.id),
         fetch(`/api/socials/profile/${profileData.id}`).then((r) => r.json()),
         linksApi.getByProfileId(profileData.id),
         badgesApi.getUserBadges(profileData.id).catch(() => []),
         linkGroupsApi.list().catch(() => []),
+        profileApi.getTags().catch(() => ({ tags: [] })),
       ]);
       setConfig(configData);
       setWidgets(Array.isArray(configData?.widgets) ? configData.widgets : []);
@@ -81,15 +90,14 @@ export default function ProfilePage() {
       setLinks((linksData || []).filter((l: any) => l.is_active !== false));
       setBadges(badgesData || []);
       setLinkGroups(groupsData || []);
+      setTags(tagsData?.tags || []);
 
-      // Custom page title
       if (configData?.custom_page_title) {
         document.title = configData.custom_page_title;
       } else {
         document.title = `${profileData.display_name || profileData.username} | kio.lol`;
       }
 
-      // Custom favicon
       if (configData?.custom_favicon) {
         let favicon = document.querySelector("link[rel='icon']") as HTMLLinkElement;
         if (!favicon) {
@@ -100,7 +108,6 @@ export default function ProfilePage() {
         favicon.href = configData.custom_favicon;
       }
 
-      // Check if private
       if (configData?.is_private && configData?.passcode) {
         setIsPrivateBlocked(true);
       }
@@ -175,6 +182,35 @@ export default function ProfilePage() {
     if (!hasMedia && !entered) setEntered(true);
   }, [loading, profile, hasMedia, entered]);
 
+  const handleCopyUrl = () => {
+    const url = `${window.location.origin}/@${username}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedUrl(true);
+      toast.success("Link copied!");
+      setTimeout(() => setCopiedUrl(false), 2000);
+    }).catch(() => {
+      toast.error("Failed to copy");
+    });
+  };
+
+  const handleUnlockLink = async (linkId: string) => {
+    const password = linkPasswords[linkId];
+    if (!password?.trim()) return;
+    setUnlockingLinkId(linkId);
+    try {
+      const result = await linksApi.unlock(linkId, password);
+      if (result?.url) {
+        window.open(result.url, "_blank");
+      }
+      setLinkPasswords((prev) => ({ ...prev, [linkId]: "" }));
+      toast.success("Link unlocked");
+    } catch {
+      toast.error("Incorrect password");
+    } finally {
+      setUnlockingLinkId(null);
+    }
+  };
+
   const getBackgroundStyle = (): React.CSSProperties => {
     const t = (config?.background_type || "").toLowerCase();
     switch (t) {
@@ -236,7 +272,6 @@ export default function ProfilePage() {
     }
   };
 
-  // Filter scheduled links
   const getVisibleLinks = () => {
     const now = new Date();
     return links.filter((l: any) => {
@@ -246,7 +281,6 @@ export default function ProfilePage() {
     });
   };
 
-  // Group links
   const getGroupedLinks = () => {
     const visibleLinks = getVisibleLinks();
     const groups = new Map<string, any[]>();
@@ -287,7 +321,6 @@ export default function ProfilePage() {
     );
   }
 
-  // Blocked state
   if (isBlocked) {
     return (
       <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center gap-4">
@@ -304,7 +337,6 @@ export default function ProfilePage() {
     );
   }
 
-  // Private profile passcode screen
   if (isPrivateBlocked) {
     return (
       <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center gap-6 px-4">
@@ -352,10 +384,8 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen relative overflow-hidden" style={getBackgroundStyle()}>
-      {/* Custom CSS injection */}
       {config?.custom_css && <style dangerouslySetInnerHTML={{ __html: config.custom_css }} />}
 
-      {/* Custom cursor */}
       {config?.enable_custom_cursor && config?.cursor_url && (
         <style
           dangerouslySetInnerHTML={{
@@ -364,7 +394,6 @@ export default function ProfilePage() {
         />
       )}
 
-      {/* Background video */}
       {bgType === "video" && config?.background_video_url && (
         <video
           src={config.background_video_url}
@@ -379,7 +408,6 @@ export default function ProfilePage() {
         />
       )}
 
-      {/* Background image overlay */}
       {bgType === "image" && config?.background_url && (
         <div
           className="absolute inset-0 w-full h-full"
@@ -394,7 +422,6 @@ export default function ProfilePage() {
         />
       )}
 
-      {/* Effects */}
       {entered && config?.enable_snow && <SnowEffect />}
       {entered && config?.enable_particles && (
         <ParticleEffect color={config.particle_color || "#8b5cf6"} />
@@ -415,6 +442,30 @@ export default function ProfilePage() {
         >
           {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
         </button>
+      )}
+
+      {/* Music Controls */}
+      {entered && config?.show_music_controls && config?.music_url && (
+        <div className="fixed bottom-4 right-4 z-50 flex items-center gap-1.5">
+          <button
+            className="p-2 bg-black/40 backdrop-blur-md rounded-full border border-white/[0.06] text-[#a1a1aa] hover:text-white transition-colors cursor-pointer"
+            title="Previous"
+          >
+            <SkipBack size={14} />
+          </button>
+          <button
+            className="p-2 bg-black/40 backdrop-blur-md rounded-full border border-white/[0.06] text-[#a1a1aa] hover:text-white transition-colors cursor-pointer"
+            title="Next"
+          >
+            <SkipForward size={14} />
+          </button>
+          <button
+            className="p-2 bg-black/40 backdrop-blur-md rounded-full border border-white/[0.06] text-[#a1a1aa] hover:text-white transition-colors cursor-pointer"
+            title="Shuffle"
+          >
+            <Shuffle size={14} />
+          </button>
+        </div>
       )}
 
       {/* Report / Block buttons */}
@@ -516,7 +567,7 @@ export default function ProfilePage() {
                 </motion.div>
               )}
 
-              {/* Name + Badges */}
+              {/* Name + Badges + Verified */}
               <motion.div
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -533,6 +584,11 @@ export default function ProfilePage() {
                 >
                   {profile.display_name || profile.username}
                 </h1>
+                {profile.verified === 1 && (
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#3b82f6] shrink-0">
+                    <Check size={12} className="text-white" strokeWidth={3} />
+                  </span>
+                )}
                 {badges.length > 0 && config?.show_badges !== false && !config?.hide_badges && (
                   <div
                     className="inline-flex p-[2px] rounded-[14px] shrink-0"
@@ -583,6 +639,19 @@ export default function ProfilePage() {
                 </motion.p>
               )}
 
+              {/* Copy Link Button */}
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.22 }}
+                onClick={handleCopyUrl}
+                className="flex items-center gap-1.5 mt-1 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[11px] text-[#52525b] hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer"
+                style={{ fontFamily: font }}
+              >
+                {copiedUrl ? <Check size={10} /> : <Copy size={10} />}
+                {copiedUrl ? "Copied!" : "Copy Link"}
+              </motion.button>
+
               {/* Bio */}
               {profile.bio && (
                 <motion.p
@@ -598,6 +667,48 @@ export default function ProfilePage() {
                 >
                   {profile.bio}
                 </motion.p>
+              )}
+
+              {/* Custom Status */}
+              {profile.custom_status && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.27 }}
+                  className="mt-2"
+                >
+                  <span
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium"
+                    style={{
+                      background: `${config?.primary_color || "#8b5cf6"}15`,
+                      color: config?.primary_color || "#8b5cf6",
+                      border: `1px solid ${config?.primary_color || "#8b5cf6"}25`,
+                      fontFamily: font,
+                    }}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                    {profile.custom_status}
+                  </span>
+                </motion.div>
+              )}
+
+              {/* Tags */}
+              {tags.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.28 }}
+                  className="flex flex-wrap items-center gap-1.5 mt-2.5 justify-center"
+                >
+                  {tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-2.5 py-0.5 rounded-full text-[10px] font-medium text-[#71717a] bg-white/[0.04] border border-white/[0.06]"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </motion.div>
               )}
 
               {/* Social Icons */}
@@ -645,7 +756,6 @@ export default function ProfilePage() {
               {/* Links */}
               {getVisibleLinks().length > 0 && (
                 <div className={cn("w-full mt-6", getLinkGap())}>
-                  {/* Ungrouped links */}
                   {ungrouped.map((link: any, i: number) => (
                     <LinkComponent
                       key={link.id}
@@ -654,10 +764,13 @@ export default function ProfilePage() {
                       config={config}
                       index={i}
                       linkSize={getLinkSize()}
+                      linkPasswords={linkPasswords}
+                      setLinkPasswords={setLinkPasswords}
+                      onUnlock={handleUnlockLink}
+                      unlockingLinkId={unlockingLinkId}
                     />
                   ))}
 
-                  {/* Grouped links */}
                   {Array.from(groups.entries()).map(([groupId, groupLinks]) => {
                     const group = linkGroups.find((g) => g.id === groupId);
                     return (
@@ -683,6 +796,10 @@ export default function ProfilePage() {
                               config={config}
                               index={i}
                               linkSize={getLinkSize()}
+                              linkPasswords={linkPasswords}
+                              setLinkPasswords={setLinkPasswords}
+                              onUnlock={handleUnlockLink}
+                              unlockingLinkId={unlockingLinkId}
                             />
                           ))}
                         </div>
@@ -690,6 +807,21 @@ export default function ProfilePage() {
                     );
                   })}
                 </div>
+              )}
+
+              {/* Audio Visualizer */}
+              {entered && config?.show_visualizer && config?.music_url && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                  className="mt-4 flex justify-center"
+                >
+                  <AudioVisualizer
+                    audioRef={audioRef}
+                    color={config?.visualizer_color || config?.primary_color || "#8b5cf6"}
+                  />
+                </motion.div>
               )}
 
               {/* Discord Status Card */}
@@ -730,6 +862,23 @@ export default function ProfilePage() {
                   <div dangerouslySetInnerHTML={{ __html: config.custom_html }} />
                 </div>
               )}
+
+              {/* Share Button */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                className="mt-6"
+              >
+                <button
+                  onClick={() => setShowShareModal(true)}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-[12px] font-medium text-[#52525b] hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer"
+                  style={{ fontFamily: font }}
+                >
+                  <Share2 size={14} />
+                  Share Profile
+                </button>
+              </motion.div>
             </div>
           </motion.div>
         )}
@@ -816,6 +965,15 @@ export default function ProfilePage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Share Modal */}
+      <ShareModal
+        open={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        username={username || ""}
+        profileId={profile.id}
+        displayName={profile.display_name}
+      />
     </div>
   );
 }
@@ -826,25 +984,38 @@ function LinkComponent({
   config,
   index,
   linkSize,
+  linkPasswords,
+  setLinkPasswords,
+  onUnlock,
+  unlockingLinkId,
 }: {
   link: any;
   font: string;
   config: any;
   index: number;
   linkSize: string;
+  linkPasswords: Record<string, string>;
+  setLinkPasswords: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  onUnlock: (linkId: string) => void;
+  unlockingLinkId: string | null;
 }) {
-  const handleClick = () => {
-    linksApi.trackClick(link.id).catch(() => {});
+  const isPasswordProtected = link.requires_password || link.visibility === "password";
+  const isExpired = link.scheduled_end && new Date(link.scheduled_end) < new Date();
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (isPasswordProtected) {
+      e.preventDefault();
+      if (!linkPasswords[link.id]?.trim()) return;
+      onUnlock(link.id);
+    } else {
+      linksApi.trackClick(link.id).catch(() => {});
+    }
   };
 
   const borderRadius = config?.link_border_radius ?? 16;
 
   return (
-    <motion.a
-      key={link.id}
-      href={link.url}
-      target={link.target || "_blank"}
-      rel="noopener noreferrer"
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
@@ -852,68 +1023,110 @@ function LinkComponent({
         duration: 0.4,
         ease: [0.16, 1, 0.3, 1],
       }}
-      onClick={handleClick}
-      className={cn(
-        "group w-full flex items-center gap-3.5 px-4 font-medium transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
-        linkSize,
-        {
-          "hover:shadow-lg hover:shadow-purple-500/5": link.open_animation === "glow",
-          "hover:animate-bounce": link.open_animation === "bounce",
-          "hover:animate-pulse": link.open_animation === "pulse",
-        }
-      )}
-      style={{
-        fontFamily: font,
-        background: link.background_color || (link.color ? `${link.color}12` : "rgba(255,255,255,0.04)"),
-        border: `1px solid ${
-          link.color ? `${link.color}20` : "rgba(255,255,255,0.06)"
-        }`,
-        borderRadius: `${borderRadius}px`,
-      }}
     >
-      <span className="flex items-center gap-3 min-w-0 flex-1">
-        {link.thumbnail_url ? (
-          <img
-            src={link.thumbnail_url}
-            alt=""
-            className="w-6 h-6 rounded-lg object-cover shrink-0"
-          />
-        ) : link.icon ? (
-          <span
-            className="w-6 h-6 rounded-lg flex items-center justify-center text-sm shrink-0"
-            style={{
-              backgroundColor: link.color ? `${link.color}25` : "rgba(255,255,255,0.08)",
-            }}
-          >
-            {link.icon}
-          </span>
-        ) : link.color ? (
-          <span
-            className="w-6 h-6 rounded-lg shrink-0 flex items-center justify-center text-[11px] font-bold text-white"
-            style={{ backgroundColor: `${link.color}30` }}
-          >
-            {link.title?.[0]?.toUpperCase()}
-          </span>
-        ) : null}
-        <span className="truncate text-white">{link.title}</span>
-        {link.description && (
-          <span className="text-[12px] text-[#52525b] truncate hidden sm:inline">
-            {link.description}
-          </span>
+      <a
+        href={isPasswordProtected ? "#" : link.url}
+        target={isPasswordProtected ? undefined : (link.target || "_blank")}
+        rel={isPasswordProtected ? undefined : "noopener noreferrer"}
+        onClick={handleClick}
+        className={cn(
+          "group w-full flex items-center gap-3.5 px-4 font-medium transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
+          linkSize,
+          isExpired && "opacity-50",
+          {
+            "hover:shadow-lg hover:shadow-purple-500/5": link.open_animation === "glow",
+            "hover:animate-bounce": link.open_animation === "bounce",
+            "hover:animate-pulse": link.open_animation === "pulse",
+          }
         )}
-      </span>
-      <svg
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        className="text-[#3f3f46] group-hover:text-[#71717a] shrink-0 transition-colors"
+        style={{
+          fontFamily: font,
+          background: link.background_color || (link.color ? `${link.color}12` : "rgba(255,255,255,0.04)"),
+          border: `1px solid ${
+            link.color ? `${link.color}20` : "rgba(255,255,255,0.06)"
+          }`,
+          borderRadius: `${borderRadius}px`,
+        }}
       >
-        <path d="M7 17L17 7M17 7H7M17 7v10" />
-      </svg>
-    </motion.a>
+        <span className="flex items-center gap-3 min-w-0 flex-1">
+          {isPasswordProtected && (
+            <Lock size={12} className="text-[#52525b] shrink-0" />
+          )}
+          {link.thumbnail_url ? (
+            <img
+              src={link.thumbnail_url}
+              alt=""
+              className="w-6 h-6 rounded-lg object-cover shrink-0"
+            />
+          ) : link.icon ? (
+            <span
+              className="w-6 h-6 rounded-lg flex items-center justify-center text-sm shrink-0"
+              style={{
+                backgroundColor: link.color ? `${link.color}25` : "rgba(255,255,255,0.08)",
+              }}
+            >
+              {link.icon}
+            </span>
+          ) : link.color ? (
+            <span
+              className="w-6 h-6 rounded-lg shrink-0 flex items-center justify-center text-[11px] font-bold text-white"
+              style={{ backgroundColor: `${link.color}30` }}
+            >
+              {link.title?.[0]?.toUpperCase()}
+            </span>
+          ) : null}
+          <span className="truncate text-white">{link.title}</span>
+          {link.description && (
+            <span className="text-[12px] text-[#52525b] truncate hidden sm:inline">
+              {link.description}
+            </span>
+          )}
+          {isExpired && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-red-400/[0.12] text-red-400 shrink-0">
+              Expired
+            </span>
+          )}
+        </span>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          className="text-[#3f3f46] group-hover:text-[#71717a] shrink-0 transition-colors"
+        >
+          <path d="M7 17L17 7M17 7H7M17 7v10" />
+        </svg>
+      </a>
+      {isPasswordProtected && (
+        <div className="mt-1.5 flex gap-1.5 px-1">
+          <input
+            type="password"
+            value={linkPasswords[link.id] || ""}
+            onChange={(e) =>
+              setLinkPasswords((prev) => ({ ...prev, [link.id]: e.target.value }))
+            }
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onUnlock(link.id);
+            }}
+            placeholder="Enter password to unlock"
+            className="flex-1 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-[11px] text-white placeholder:text-[#3f3f46] outline-none transition-all focus:border-white/[0.12]"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onUnlock(link.id);
+            }}
+            disabled={unlockingLinkId === link.id || !linkPasswords[link.id]?.trim()}
+            className="px-3 py-1.5 rounded-lg bg-white text-black text-[11px] font-bold hover:bg-white/90 transition-all disabled:opacity-40 cursor-pointer shrink-0"
+          >
+            {unlockingLinkId === link.id ? "..." : "Go"}
+          </button>
+        </div>
+      )}
+    </motion.div>
   );
 }
 

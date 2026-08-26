@@ -104,6 +104,27 @@ export const profileApi = {
   async delete() {
     return apiFetch('/profiles/me', { method: 'DELETE' });
   },
+  async getBySlug(slug: string) {
+    return apiFetch(`/profiles/slug/${slug}`);
+  },
+  async checkSlug(slug: string) {
+    return apiFetch(`/profiles/check-slug/${slug}`);
+  },
+  async setTags(tags: string[]) {
+    return apiFetch('/profiles/tags', { method: 'PUT', body: JSON.stringify({ tags }) });
+  },
+  async getTags() {
+    return apiFetch('/profiles/tags');
+  },
+  async deactivate() {
+    return apiFetch('/profiles/deactivate', { method: 'POST' });
+  },
+  async reactivate() {
+    return apiFetch('/profiles/reactivate', { method: 'POST' });
+  },
+  async getQR(profileId: string) {
+    return `${API_URL}/profiles/${profileId}/qr`;
+  },
 };
 
 export const configApi = {
@@ -145,6 +166,9 @@ export const linksApi = {
   },
   async trackClick(id: string) {
     return apiFetch(`/links/${id}/click`, { method: 'POST' });
+  },
+  async unlock(linkId: string, password: string) {
+    return apiFetch(`/links/${linkId}/unlock`, { method: 'POST', body: JSON.stringify({ password }) });
   },
 };
 
@@ -254,6 +278,15 @@ export const analyticsApi = {
     a.click();
     URL.revokeObjectURL(url);
   },
+  async getLive(profileId: string) {
+    return apiFetch(`/analytics/live/${profileId}`);
+  },
+  async getConversion(profileId: string) {
+    return apiFetch(`/analytics/conversion/${profileId}`);
+  },
+  async getLinkStats(linkId: string) {
+    return apiFetch(`/analytics/link/${linkId}`);
+  },
 };
 
 export const reportsApi = {
@@ -323,6 +356,33 @@ export const accountApi = {
   async getSecurity() {
     return apiFetch('/account/security');
   },
+  async verifyEmail() {
+    return apiFetch('/account/email/verify', { method: 'POST' });
+  },
+  async confirmEmailVerification(token: string) {
+    return apiFetch('/account/email/verify/confirm', { method: 'POST', body: JSON.stringify({ token }) });
+  },
+  async enable2FA() {
+    return apiFetch('/account/2fa/enable', { method: 'POST' });
+  },
+  async confirm2FA(code: string) {
+    return apiFetch('/account/2fa/confirm', { method: 'POST', body: JSON.stringify({ code }) });
+  },
+  async disable2FA(code: string) {
+    return apiFetch('/account/2fa/disable', { method: 'POST', body: JSON.stringify({ code }) });
+  },
+  async getBackupCodes() {
+    return apiFetch('/account/2fa/backup-codes', { method: 'POST' });
+  },
+  async exportData() {
+    return apiFetch('/account/export');
+  },
+  async getNotificationSettings() {
+    return apiFetch('/account/notifications/settings');
+  },
+  async updateNotificationSettings(settings: Record<string, boolean>) {
+    return apiFetch('/account/notifications/settings', { method: 'PUT', body: JSON.stringify(settings) });
+  },
 };
 
 export const discoveryApi = {
@@ -374,6 +434,36 @@ export const adminExtendedApi = {
   async featureProfile(profileId: string) {
     return apiFetch(`/admin-extended/feature-profile/${profileId}`, { method: 'POST' });
   },
+  async deleteUser(userId: string) {
+    return apiFetch(`/admin-extended/users/${userId}`, { method: 'DELETE' });
+  },
+  async deactivateUser(userId: string) {
+    return apiFetch(`/admin-extended/users/${userId}/deactivate`, { method: 'PUT' });
+  },
+  async reactivateUser(userId: string) {
+    return apiFetch(`/admin-extended/users/${userId}/reactivate`, { method: 'PUT' });
+  },
+  async forceUsername(userId: string, username: string) {
+    return apiFetch(`/admin-extended/users/${userId}/username`, { method: 'PUT', body: JSON.stringify({ username }) });
+  },
+  async forceEmail(userId: string, email: string) {
+    return apiFetch(`/admin-extended/users/${userId}/email`, { method: 'PUT', body: JSON.stringify({ email }) });
+  },
+  async forcePasswordReset(userId: string) {
+    return apiFetch(`/admin-extended/users/${userId}/reset-password`, { method: 'POST' });
+  },
+  async endUserSessions(userId: string) {
+    return apiFetch(`/admin-extended/users/${userId}/sessions`, { method: 'DELETE' });
+  },
+  async getUserLoginHistory(userId: string) {
+    return apiFetch(`/admin-extended/users/${userId}/login-history`);
+  },
+  async getGlobalSettings() {
+    return apiFetch('/admin-extended/global-settings');
+  },
+  async updateGlobalSettings(settings: Record<string, string>) {
+    return apiFetch('/admin-extended/global-settings', { method: 'PUT', body: JSON.stringify(settings) });
+  },
 };
 
 export const legalApi = {
@@ -422,4 +512,22 @@ export const linkGroupsApi = {
   async reorder(groups: { id: string; sort_order: number }[]) {
     return apiFetch('/links/groups/reorder', { method: 'POST', body: JSON.stringify({ groups }) });
   },
+};
+
+export const notificationsApi = {
+  async list(page = 1) { return apiFetch(`/notifications?page=${page}`); },
+  async markRead(id: string) { return apiFetch(`/notifications/${id}/read`, { method: 'PUT' }); },
+  async markAllRead() { return apiFetch('/notifications/read-all', { method: 'PUT' }); },
+  async delete(id: string) { return apiFetch(`/notifications/${id}`, { method: 'DELETE' }); },
+  async unreadCount() { return apiFetch('/notifications/unread-count'); },
+};
+
+export const csrfApi = {
+  async getToken() { return apiFetch('/csrf-token'); },
+};
+
+export const publicProfileApi = {
+  async getFull(username: string) { return apiFetch(`/public/profile/${username}`); },
+  async getLinks(username: string) { return apiFetch(`/public/profile/${username}/links`); },
+  async getSocials(username: string) { return apiFetch(`/public/profile/${username}/socials`); },
 };

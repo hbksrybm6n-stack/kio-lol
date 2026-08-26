@@ -327,3 +327,21 @@ export interface Appeal {
 export type UserRole = 'user' | 'moderator' | 'staff' | 'admin';
 
 export type ReportCategory = 'spam' | 'inappropriate' | 'harassment' | 'impersonation' | 'other';
+
+export interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  read: number;
+  created_at: string;
+}
+
+export interface PremiumPlan {
+  id: string;
+  name: string;
+  price_monthly: number;
+  price_yearly: number;
+  features: string[];
+  is_active: number;
+}

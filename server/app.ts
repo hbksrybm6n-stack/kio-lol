@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -21,6 +22,8 @@ import adminExtendedRoutes from './routes/admin-extended.js';
 import legalRoutes from './routes/legal.js';
 import publicRoutes from './routes/public.js';
 import moderationRoutes from './routes/moderation.js';
+import notificationRoutes from './routes/notifications.js';
+import publicApiRoutes from './routes/public-api.js';
 
 import { antiSpam } from './middleware/security.js';
 import db from './db.js';
@@ -28,6 +31,29 @@ import db from './db.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const MAX_JSON_SIZE = '210mb';
+
+const csrfTokens = new Map<string, { token: string; expiresAt: number }>();
+
+function generateCsrfToken(): string {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+function sanitizeInput(text: any): any {
+  if (typeof text === 'string') {
+    return text.replace(/<[^>]*>/g, '').trim();
+  }
+  if (Array.isArray(text)) {
+    return text.map(sanitizeInput);
+  }
+  if (text && typeof text === 'object') {
+    const cleaned: Record<string, any> = {};
+    for (const [key, val] of Object.entries(text)) {
+      cleaned[key] = sanitizeInput(val);
+    }
+    return cleaned;
+  }
+  return text;
+}
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
@@ -41,7 +67,15 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {
 const distPath = path.join(__dirname, '..', 'dist');
 app.use(express.static(distPath));
 
-// Maintenance mode check
+app.use((req: any, _res, next) => {
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+    if (req.body && typeof req.body === 'object') {
+      req.body = sanitizeInput(req.body);
+    }
+  }
+  next();
+});
+
 app.use((req, res, next) => {
   if (req.path.startsWith('/api/auth') || req.path.startsWith('/api/public')) return next();
   try {
@@ -55,6 +89,34 @@ app.use((req, res, next) => {
       return res.status(503).json({ error: 'System is under maintenance. Please try again later.' });
     }
   } catch {}
+  next();
+});
+
+app.get('/api/csrf-token', (req, res) => {
+  const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+  const token = generateCsrfToken();
+  csrfTokens.set(ip, { token, expiresAt: Date.now() + 60 * 60 * 1000 });
+  res.json({ csrfToken: token });
+});
+
+app.use((req: any, res, next) => {
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+    if (req.path.startsWith('/api/') && !req.path.startsWith('/api/csrf-token')) {
+      const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+      const token = req.headers['x-csrf-token'] || req.body?._csrf;
+      const stored = csrfTokens.get(ip);
+      if (stored && stored.token === token && stored.expiresAt > Date.now()) {
+        csrfTokens.delete(ip);
+        return next();
+      }
+      if (stored && stored.expiresAt <= Date.now()) {
+        csrfTokens.delete(ip);
+      }
+      if (token) {
+        return res.status(403).json({ error: 'Invalid CSRF token' });
+      }
+    }
+  }
   next();
 });
 
@@ -75,12 +137,13 @@ app.use('/api/admin-extended', adminExtendedRoutes);
 app.use('/api/legal', legalRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/moderation', moderationRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/public-api', publicApiRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Sitemap
 app.get('/sitemap.xml', (_req, res) => {
   res.setHeader('Content-Type', 'application/xml');
   const profiles = db.prepare('SELECT username, updated_at FROM profiles WHERE is_active = 1 ORDER BY updated_at DESC').all() as any[];
@@ -93,7 +156,6 @@ app.get('/sitemap.xml', (_req, res) => {
   res.send(xml);
 });
 
-// Robots.txt
 app.get('/robots.txt', (_req, res) => {
   res.setHeader('Content-Type', 'text/plain');
   res.send('User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /dashboard/\nDisallow: /admin\nSitemap: https://kio.lol/sitemap.xml');

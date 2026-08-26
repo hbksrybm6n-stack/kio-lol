@@ -1,23 +1,30 @@
 import { create } from 'zustand';
-import { authApi } from '@/lib/api';
+import { authApi, notificationsApi } from '@/lib/api';
+import type { Notification } from '@/types';
 
 interface AuthState {
   user: { id: string; email: string; username?: string; displayName?: string; avatarUrl?: string; role?: string } | null;
   profile: Record<string, any> | null;
   loading: boolean;
   initialized: boolean;
+  notifications: Notification[];
+  unreadCount: number;
   setUser: (user: AuthState['user']) => void;
   setProfile: (profile: Record<string, any>) => void;
   initialize: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
+  fetchNotifications: () => Promise<void>;
+  fetchUnreadCount: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   profile: null,
   loading: true,
   initialized: false,
+  notifications: [],
+  unreadCount: 0,
   setUser: (user) => set({ user }),
   setProfile: (profile) => set({ profile }),
   initialize: async () => {
@@ -38,6 +45,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           } as any,
           profile: profile,
         });
+        get().fetchUnreadCount().catch(() => {});
       }
     } catch {
       localStorage.removeItem('kio_token');
@@ -65,6 +73,18 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   signOut: async () => {
     authApi.logout();
-    set({ user: null, profile: null });
+    set({ user: null, profile: null, notifications: [], unreadCount: 0 });
+  },
+  fetchNotifications: async () => {
+    try {
+      const data = await notificationsApi.list();
+      set({ notifications: data?.data || data || [] });
+    } catch {}
+  },
+  fetchUnreadCount: async () => {
+    try {
+      const data = await notificationsApi.unreadCount();
+      set({ unreadCount: data?.count ?? data?.unread_count ?? 0 });
+    } catch {}
   },
 }));

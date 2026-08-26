@@ -218,7 +218,6 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
-  -- Username history
   CREATE TABLE IF NOT EXISTS username_history (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -227,7 +226,6 @@ db.exec(`
     changed_at TEXT DEFAULT (datetime('now'))
   );
 
-  -- Login history
   CREATE TABLE IF NOT EXISTS login_history (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -238,7 +236,6 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
-  -- Active sessions
   CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -250,7 +247,6 @@ db.exec(`
     expires_at TEXT NOT NULL
   );
 
-  -- Blocked users (blocklist)
   CREATE TABLE IF NOT EXISTS blocked_users (
     id TEXT PRIMARY KEY,
     blocker_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -259,7 +255,6 @@ db.exec(`
     UNIQUE(blocker_id, blocked_id)
   );
 
-  -- Link groups/categories
   CREATE TABLE IF NOT EXISTS link_groups (
     id TEXT PRIMARY KEY,
     profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -269,7 +264,6 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
-  -- Reports (enhanced with status history)
   CREATE TABLE IF NOT EXISTS report_actions (
     id TEXT PRIMARY KEY,
     report_id TEXT NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
@@ -279,7 +273,6 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
-  -- Audit logs
   CREATE TABLE IF NOT EXISTS audit_logs (
     id TEXT PRIMARY KEY,
     user_id TEXT,
@@ -291,7 +284,6 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
-  -- Announcements
   CREATE TABLE IF NOT EXISTS announcements (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
@@ -303,7 +295,6 @@ db.exec(`
     expires_at TEXT
   );
 
-  -- Staff notes
   CREATE TABLE IF NOT EXISTS staff_notes (
     id TEXT PRIMARY KEY,
     target_user_id TEXT NOT NULL,
@@ -312,14 +303,12 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
-  -- System settings (key-value)
   CREATE TABLE IF NOT EXISTS system_settings (
     key TEXT PRIMARY KEY,
     value TEXT DEFAULT '',
     updated_at TEXT DEFAULT (datetime('now'))
   );
 
-  -- API keys
   CREATE TABLE IF NOT EXISTS api_keys (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -333,7 +322,6 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
-  -- Webhooks
   CREATE TABLE IF NOT EXISTS webhooks (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -345,7 +333,6 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
-  -- Premium subscriptions
   CREATE TABLE IF NOT EXISTS subscriptions (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -359,7 +346,6 @@ db.exec(`
     updated_at TEXT DEFAULT (datetime('now'))
   );
 
-  -- Appeals
   CREATE TABLE IF NOT EXISTS appeals (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -371,7 +357,6 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
-  -- Legal pages content
   CREATE TABLE IF NOT EXISTS legal_pages (
     slug TEXT PRIMARY KEY,
     title TEXT NOT NULL,
@@ -379,7 +364,6 @@ db.exec(`
     updated_at TEXT DEFAULT (datetime('now'))
   );
 
-  -- Cookie consent log
   CREATE TABLE IF NOT EXISTS cookie_consents (
     id TEXT PRIMARY KEY,
     visitor_ip TEXT DEFAULT '',
@@ -388,7 +372,6 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
-  -- Profile reports (enhanced)
   CREATE TABLE IF NOT EXISTS profile_reports (
     id TEXT PRIMARY KEY,
     reporter_profile_id TEXT REFERENCES profiles(id) ON DELETE SET NULL,
@@ -400,13 +383,114 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
-  -- Blocked IPs
   CREATE TABLE IF NOT EXISTS blocked_ips (
     id TEXT PRIMARY KEY,
     ip TEXT NOT NULL,
     reason TEXT DEFAULT '',
     blocked_by TEXT,
     expires_at TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS profile_tags (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    tag TEXT NOT NULL,
+    UNIQUE(profile_id, tag)
+  );
+
+  CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    revoked INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS revoked_tokens (
+    jti TEXT PRIMARY KEY,
+    expires_at TEXT NOT NULL,
+    revoked_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS email_verifications (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    token TEXT UNIQUE NOT NULL,
+    expires_at TEXT NOT NULL,
+    verified INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS totp_secrets (
+    id TEXT PRIMARY KEY,
+    user_id TEXT UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    secret TEXT NOT NULL,
+    enabled INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS recovery_codes (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    code TEXT NOT NULL,
+    used INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS notifications (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    read INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS trusted_devices (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    device_name TEXT DEFAULT '',
+    fingerprint TEXT NOT NULL,
+    last_used_at TEXT DEFAULT (datetime('now')),
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS system_backups (
+    id TEXT PRIMARY KEY,
+    filename TEXT NOT NULL,
+    size INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'pending',
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS error_logs (
+    id TEXT PRIMARY KEY,
+    level TEXT DEFAULT 'error',
+    message TEXT NOT NULL,
+    stack TEXT DEFAULT '',
+    context TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS premium_plans (
+    id TEXT PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    price_monthly REAL DEFAULT 0,
+    price_yearly REAL DEFAULT 0,
+    features TEXT DEFAULT '[]',
+    is_active INTEGER DEFAULT 1
+  );
+
+  CREATE TABLE IF NOT EXISTS captcha_tokens (
+    id TEXT PRIMARY KEY,
+    token TEXT UNIQUE NOT NULL,
+    ip TEXT DEFAULT '',
+    verified INTEGER DEFAULT 0,
+    expires_at TEXT NOT NULL,
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -423,6 +507,11 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_link_groups_profile_id ON link_groups(profile_id);
   CREATE INDEX IF NOT EXISTS idx_api_keys_user_id ON api_keys(user_id);
   CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
+  CREATE INDEX IF NOT EXISTS idx_profile_tags_profile_id ON profile_tags(profile_id);
+  CREATE INDEX IF NOT EXISTS idx_profile_tags_tag ON profile_tags(tag);
+  CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+  CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+  CREATE INDEX IF NOT EXISTS idx_error_logs_created_at ON error_logs(created_at);
 `);
 
 const badgeCount = db.prepare('SELECT COUNT(*) as c FROM badges').get() as { c: number };
@@ -446,14 +535,12 @@ if (badgeCount.c === 0) {
   insertMany(badges);
 }
 
-// Migrate: add columns that may not exist
 const migrateColumn = (table: string, column: string, type: string, def: string) => {
   try {
     db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${type} DEFAULT ${def}`).run();
   } catch { /* column already exists */ }
 };
 
-// Original migrations
 migrateColumn('profiles', 'location', 'TEXT', "''");
 migrateColumn('profile_config', 'icon_color', 'TEXT', "''");
 migrateColumn('profile_config', 'background_opacity', 'INTEGER', '100');
@@ -486,7 +573,6 @@ migrateColumn('profile_config', 'widgets', 'TEXT', "'[]'");
 migrateColumn('daily_stats', 'unique_visitors', 'INTEGER', '0');
 migrateColumn('analytics', 'visitor_ip', 'TEXT', "''");
 
-// New profile columns
 migrateColumn('profiles', 'is_private', 'INTEGER', '0');
 migrateColumn('profiles', 'passcode', 'TEXT', "''");
 migrateColumn('profiles', 'custom_css', 'TEXT', "''");
@@ -495,7 +581,6 @@ migrateColumn('profiles', 'custom_title', 'TEXT', "''");
 migrateColumn('profiles', 'featured', 'INTEGER', '0');
 migrateColumn('profiles', 'premium', 'INTEGER', '0');
 
-// New profile_config columns
 migrateColumn('profile_config', 'card_width', 'TEXT', "'420px'");
 migrateColumn('profile_config', 'card_height', 'TEXT', "'auto'");
 migrateColumn('profile_config', 'card_shadow', 'TEXT', "''");
@@ -519,7 +604,6 @@ migrateColumn('profile_config', 'transition_animation', 'TEXT', "'fade'");
 migrateColumn('profile_config', 'loading_animation', 'TEXT', "'spinner'");
 migrateColumn('profile_config', 'profile_max_width', 'INTEGER', '420');
 
-// New link columns
 migrateColumn('links', 'group_id', 'TEXT', "''");
 migrateColumn('links', 'thumbnail_url', 'TEXT', "''");
 migrateColumn('links', 'scheduled_at', 'TEXT', "''");
@@ -528,11 +612,58 @@ migrateColumn('links', 'visibility', 'TEXT', "'public'");
 migrateColumn('links', 'target', 'TEXT', "'_blank'");
 migrateColumn('links', 'open_animation', 'TEXT', "'none'");
 
-// New analytics columns
 migrateColumn('analytics', 'device_type', 'TEXT', "''");
 migrateColumn('analytics', 'browser', 'TEXT', "''");
 migrateColumn('analytics', 'os', 'TEXT', "''");
 migrateColumn('analytics', 'country', 'TEXT', "''");
 migrateColumn('analytics', 'screen_width', 'INTEGER', '0');
+
+migrateColumn('profiles', 'slug', 'TEXT', "''");
+migrateColumn('profiles', 'verified', 'INTEGER', '0');
+migrateColumn('profiles', 'custom_status', 'TEXT', "''");
+migrateColumn('profiles', 'share_enabled', 'INTEGER', '1');
+migrateColumn('profiles', 'is_deactivated', 'INTEGER', '0');
+migrateColumn('profiles', 'role', 'TEXT', "'user'");
+migrateColumn('profiles', 'premium_until', 'TEXT', "''");
+migrateColumn('profiles', 'preferred_theme', 'TEXT', "'dark'");
+
+migrateColumn('profile_config', 'card_background', 'TEXT', "''");
+migrateColumn('profile_config', 'card_padding', 'TEXT', "'16px'");
+migrateColumn('profile_config', 'card_position', 'TEXT', "'center'");
+migrateColumn('profile_config', 'link_border_radius', 'INTEGER', '12');
+migrateColumn('profile_config', 'link_opacity', 'INTEGER', '100');
+migrateColumn('profile_config', 'link_blur', 'INTEGER', '0');
+migrateColumn('profile_config', 'link_shadow', 'INTEGER', '0');
+migrateColumn('profile_config', 'link_hover_color', 'TEXT', "''");
+migrateColumn('profile_config', 'social_icon_size', 'INTEGER', '18');
+migrateColumn('profile_config', 'social_icon_gap', 'INTEGER', '8');
+migrateColumn('profile_config', 'social_icon_animation', 'TEXT', "'none'");
+migrateColumn('profile_config', 'badge_position', 'TEXT', "'inline'");
+migrateColumn('profile_config', 'badge_gap', 'INTEGER', '6');
+migrateColumn('profile_config', 'font_size', 'INTEGER', '14');
+migrateColumn('profile_config', 'font_weight', 'INTEGER', '400');
+migrateColumn('profile_config', 'letter_spacing', 'TEXT', "'normal'");
+migrateColumn('profile_config', 'line_height', 'TEXT', "'1.5'");
+migrateColumn('profile_config', 'heading_size', 'INTEGER', '26');
+migrateColumn('profile_config', 'custom_text_colors', 'TEXT', "''");
+migrateColumn('profile_config', 'custom_icon_colors', 'TEXT', "''");
+migrateColumn('profile_config', 'page_bg_color', 'TEXT', "''");
+migrateColumn('profile_config', 'show_verified_badge', 'INTEGER', '1');
+migrateColumn('profile_config', 'profile_verified_color', 'TEXT', "'#22c55e'");
+
+migrateColumn('links', 'password', 'TEXT', "''");
+migrateColumn('links', 'expiration', 'TEXT', "''");
+migrateColumn('links', 'redirect_url', 'TEXT', "''");
+migrateColumn('links', 'embed_html', 'TEXT', "''");
+
+migrateColumn('analytics', 'screen_height', 'INTEGER', '0');
+
+migrateColumn('profile_config', 'music_playlist', 'TEXT', "'[]'");
+migrateColumn('profile_config', 'show_visualizer', 'INTEGER', '0');
+migrateColumn('profile_config', 'visualizer_color', 'TEXT', "'#8b5cf6'");
+migrateColumn('profile_config', 'show_progress_bar', 'INTEGER', '1');
+migrateColumn('profile_config', 'show_music_controls', 'INTEGER', '1');
+migrateColumn('profile_config', 'song_transition', 'TEXT', "'fade'");
+migrateColumn('profile_config', 'music_end_time', 'INTEGER', '0');
 
 export default db;

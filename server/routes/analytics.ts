@@ -91,7 +91,11 @@ router.get('/devices/:profileId', authMiddleware, (req: AuthRequest, res) => {
       `SELECT os, COUNT(*) as count FROM analytics WHERE profile_id = ? AND event_type = ? AND os != '' GROUP BY os ORDER BY count DESC`
     ).all(req.params.profileId, 'view');
 
-    res.json({ devices, browsers, operatingSystems });
+    const countries = db.prepare(
+      `SELECT country, COUNT(*) as count FROM analytics WHERE profile_id = ? AND event_type = ? AND country != '' GROUP BY country ORDER BY count DESC LIMIT 20`
+    ).all(req.params.profileId, 'view');
+
+    res.json({ devices, browsers, operatingSystems, countries });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -102,6 +106,72 @@ router.get('/countries/:profileId', authMiddleware, (req: AuthRequest, res) => {
     `SELECT country, COUNT(*) as count FROM analytics WHERE profile_id = ? AND event_type = ? AND country != '' GROUP BY country ORDER BY count DESC LIMIT 20`
   ).all(req.params.profileId, 'view');
   res.json(countries);
+});
+
+router.get('/live/:profileId', authMiddleware, (req: AuthRequest, res) => {
+  try {
+    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const result = db.prepare(
+      `SELECT COUNT(DISTINCT visitor_ip) as count FROM analytics WHERE profile_id = ? AND created_at >= ? AND event_type = 'view'`
+    ).get(req.params.profileId, fiveMinAgo) as any;
+    res.json({ liveVisitors: result?.count || 0 });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/conversion/:profileId', authMiddleware, (req: AuthRequest, res) => {
+  try {
+    const profile = db.prepare('SELECT view_count FROM profiles WHERE id = ?').get(req.params.profileId) as any;
+    const totalClicks = db.prepare(
+      'SELECT COALESCE(SUM(click_count), 0) as total FROM links WHERE profile_id = ?'
+    ).get(req.params.profileId) as any;
+    const views = profile?.view_count || 0;
+    const clicks = totalClicks?.total || 0;
+    const rate = views > 0 ? ((clicks / views) * 100).toFixed(2) : '0';
+    res.json({ views, clicks, conversionRate: parseFloat(rate) });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/link/:linkId', authMiddleware, (req: AuthRequest, res) => {
+  try {
+    const link = db.prepare('SELECT * FROM links WHERE id = ?').get(req.params.linkId) as any;
+    if (!link) return res.status(404).json({ error: 'Link not found' });
+
+    const profile = db.prepare('SELECT id FROM profiles WHERE id = ? AND user_id = ?').get(link.profile_id, req.userId!) as any;
+    if (!profile) return res.status(403).json({ error: 'Forbidden' });
+
+    const days = parseInt(req.query.days as string) || 30;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    const clicksByDay = db.prepare(
+      `SELECT date(created_at) as date, COUNT(*) as clicks FROM analytics WHERE link_id = ? AND event_type = 'click' AND created_at >= ? GROUP BY date(created_at) ORDER BY date ASC`
+    ).all(req.params.linkId, startDate.toISOString());
+
+    const devices = db.prepare(
+      `SELECT device_type, COUNT(*) as count FROM analytics WHERE link_id = ? AND event_type = 'click' AND device_type != '' GROUP BY device_type ORDER BY count DESC`
+    ).all(req.params.linkId);
+
+    const referrers = db.prepare(
+      `SELECT referer, COUNT(*) as count FROM analytics WHERE link_id = ? AND event_type = 'click' AND referer != '' GROUP BY referer ORDER BY count DESC LIMIT 10`
+    ).all(req.params.linkId);
+
+    const totalClicks = db.prepare(
+      'SELECT click_count FROM links WHERE id = ?'
+    ).get(req.params.linkId) as any;
+
+    res.json({
+      totalClicks: totalClicks?.click_count || 0,
+      clicksByDay,
+      devices,
+      referrers,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.get('/export/:profileId', authMiddleware, (req: AuthRequest, res) => {
