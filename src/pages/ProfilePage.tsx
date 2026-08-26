@@ -84,12 +84,11 @@ export default function ProfilePage() {
       }
       setProfile(profileData);
       const configData = response.config || {};
-      const [socialsData, linksData, badgesData, groupsData, tagsData] = await Promise.all([
-        fetch(`/api/socials/profile/${profileData.id}`).then((r) => r.json()),
-        linksApi.getByProfileId(profileData.id),
+      const [socialsData, linksData, badgesData, groupsData] = await Promise.all([
+        fetch(`/api/socials/profile/${profileData.id}`).then((r) => r.json()).catch(() => []),
+        linksApi.getByProfileId(profileData.id).catch(() => []),
         badgesApi.getUserBadges(profileData.id).catch(() => []),
         linkGroupsApi.list().catch(() => []),
-        profileApi.getTags().catch(() => ({ tags: [] })),
       ]);
       setConfig(configData);
       setWidgets(Array.isArray(configData?.widgets) ? configData.widgets : []);
@@ -97,7 +96,7 @@ export default function ProfilePage() {
       setLinks((linksData || []).filter((l: any) => l.is_active !== false));
       setBadges(badgesData || []);
       setLinkGroups(groupsData || []);
-      setTags(tagsData?.tags || []);
+      setTags(profileData.tags || []);
 
       if (configData?.custom_page_title) {
         document.title = configData.custom_page_title;
