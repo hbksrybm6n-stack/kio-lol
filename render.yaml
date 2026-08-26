@@ -22,9 +22,9 @@ services:
       - key: SMTP_SECURE
         value: "false"
       - key: SMTP_USER
-        sync: false
+        value: ""
       - key: SMTP_PASS
-        sync: false
+        value: ""
       - key: SMTP_FROM
         value: "kio.lol <noreply@kio.lol>"
       - key: CAPTCHA_SECRET
