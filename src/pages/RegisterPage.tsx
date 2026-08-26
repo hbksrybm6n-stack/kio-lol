@@ -93,11 +93,19 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const data = await authApi.register(email, password, username);
-      setPendingId(data.pendingId);
-      setDevCode(data.code || "");
-      setStep("verify");
-      setResendCooldown(60);
-      toast.success("Verification code sent to your email");
+      if (data.requiresVerification) {
+        setPendingId(data.pendingId);
+        setDevCode(data.code || "");
+        setStep("verify");
+        setResendCooldown(60);
+        toast.success("Verification code sent to your email");
+      } else {
+        localStorage.setItem('kio_token', data.token);
+        await profileApi.create({ username });
+        await refreshProfile();
+        toast.success("Account created!");
+        navigate("/dashboard");
+      }
     } catch (err: any) {
       toast.error(err?.message || "Something went wrong.");
     } finally {
