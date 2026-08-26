@@ -185,7 +185,7 @@ router.post('/reorder', authMiddleware, (req: AuthRequest, res) => {
   res.json({ ok: true });
 });
 
-router.post('/:id/click', (req, res) => {
+router.post('/:id/click', async (req, res) => {
   try {
     const link = db.prepare('SELECT * FROM links WHERE id = ?').get(req.params.id) as any;
     if (!link) return res.json({ ok: true });

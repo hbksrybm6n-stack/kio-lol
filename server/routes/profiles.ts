@@ -199,7 +199,7 @@ router.put('/config', authMiddleware, (req: AuthRequest, res) => {
   }
 });
 
-router.post('/:id/view', (req, res) => {
+router.post('/:id/view', async (req, res) => {
   try {
     const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
     const profileId = req.params.id;
