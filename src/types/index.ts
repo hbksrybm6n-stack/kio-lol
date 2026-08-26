@@ -224,3 +224,106 @@ export interface DiscordPresence {
     avatar: string;
   };
 }
+
+export interface LinkGroup {
+  id: string;
+  profile_id: string;
+  name: string;
+  sort_order: number;
+  is_visible: number;
+  created_at: string;
+}
+
+export interface LoginHistoryEntry {
+  id: string;
+  ip: string;
+  user_agent: string;
+  country: string;
+  success: number;
+  created_at: string;
+}
+
+export interface Session {
+  id: string;
+  user_agent: string;
+  ip: string;
+  is_active: number;
+  created_at: string;
+  expires_at: string;
+}
+
+export interface AuditLog {
+  id: string;
+  user_id: string;
+  action: string;
+  target_type: string;
+  target_id: string;
+  details: string;
+  ip: string;
+  created_at: string;
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  type: string;
+  is_active: number;
+  created_at: string;
+  expires_at: string | null;
+}
+
+export interface StaffNote {
+  id: string;
+  target_user_id: string;
+  author_id: string;
+  note: string;
+  created_at: string;
+}
+
+export interface LegalPage {
+  slug: string;
+  title: string;
+  content: string;
+  updated_at: string;
+}
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  key_prefix: string;
+  permissions: string;
+  rate_limit: number;
+  is_active: number;
+  last_used_at: string | null;
+  created_at: string;
+}
+
+export interface Webhook {
+  id: string;
+  url: string;
+  events: string[];
+  is_active: number;
+  last_triggered_at: string | null;
+  created_at: string;
+}
+
+export interface Subscription {
+  id: string;
+  plan: string;
+  status: string;
+  current_period_end: string | null;
+  created_at: string;
+}
+
+export interface Appeal {
+  id: string;
+  reason: string;
+  description: string;
+  status: string;
+  created_at: string;
+}
+
+export type UserRole = 'user' | 'moderator' | 'staff' | 'admin';
+
+export type ReportCategory = 'spam' | 'inappropriate' | 'harassment' | 'impersonation' | 'other';

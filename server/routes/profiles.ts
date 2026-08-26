@@ -1,20 +1,39 @@
 import { Router } from 'express';
 import { v4 as uuid } from 'uuid';
 import db from '../db.js';
-import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
+import { authMiddleware, optionalAuth, type AuthRequest } from '../middleware/auth.js';
+import { viewBotCheck, contentModerator } from '../middleware/security.js';
 
 const router = Router();
 
 router.get('/me', authMiddleware, (req: AuthRequest, res) => {
   const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId!) as any;
   if (!profile) return res.status(404).json({ error: 'Profile not found' });
-  res.json(profile);
+  const user = db.prepare('SELECT id, email FROM users WHERE id = ?').get(req.userId!) as any;
+  res.json({ ...profile, email_verified: true, email: user?.email });
 });
 
-router.get('/username/:username', (req, res) => {
-  const profile = db.prepare('SELECT * FROM profiles WHERE username = ? AND is_active = 1').get(req.params.username) as any;
-  if (!profile) return res.status(404).json({ error: 'Profile not found' });
-  res.json(profile);
+router.get('/username/:username', optionalAuth, (req: AuthRequest, res) => {
+  try {
+    const profile = db.prepare('SELECT * FROM profiles WHERE username = ? AND is_active = 1').get(req.params.username) as any;
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+
+    if (profile.is_private) {
+      const isOwner = req.userId && profile.user_id === req.userId;
+      if (!isOwner) {
+        return res.status(403).json({ error: 'This profile is private' });
+      }
+    }
+
+    const config = db.prepare('SELECT * FROM profile_config WHERE profile_id = ?').get(profile.id) as any;
+    if (config && typeof config.widgets === 'string') {
+      try { config.widgets = JSON.parse(config.widgets); } catch { config.widgets = []; }
+    }
+
+    res.json({ profile, config });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.get('/config', authMiddleware, (req: AuthRequest, res) => {
@@ -67,15 +86,32 @@ router.put('/', authMiddleware, (req: AuthRequest, res) => {
     const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId!) as any;
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
 
-    const fields = ['display_name', 'bio', 'avatar_url', 'banner_url', 'username', 'is_active', 'location'];
+    const fields = ['display_name', 'bio', 'avatar_url', 'banner_url', 'username', 'is_active', 'location', 'is_private', 'passcode', 'custom_css', 'custom_html', 'custom_title'];
     const updates: string[] = [];
     const values: any[] = [];
+
     for (const f of fields) {
       if (req.body[f] !== undefined) {
         updates.push(`${f} = ?`);
         values.push(req.body[f]);
       }
     }
+
+    if (req.body.username && req.body.username !== profile.username) {
+      const usernameCheck = db.prepare('SELECT id FROM profiles WHERE username = ? AND id != ?').get(req.body.username, profile.id);
+      if (usernameCheck) return res.status(400).json({ error: 'Username already taken' });
+
+      db.prepare('INSERT INTO username_history (id, user_id, old_username, new_username) VALUES (?, ?, ?, ?)').run(
+        uuid(), req.userId, profile.username, req.body.username
+      );
+
+      const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+      db.prepare('INSERT INTO audit_logs (id, user_id, action, target_type, target_id, details, ip) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+        uuid(), req.userId, 'username_change', 'profile', profile.id,
+        `Username changed from ${profile.username} to ${req.body.username}`, ip
+      );
+    }
+
     if (updates.length > 0) {
       updates.push("updated_at = datetime('now')");
       values.push(profile.id);
@@ -101,12 +137,13 @@ router.put('/config', authMiddleware, (req: AuthRequest, res) => {
       'enable_animated_title', 'enable_cursor_effects', 'enable_click_effects',
       'enable_background_effects', 'enable_text_effects', 'music_autoplay', 'music_loop', 'music_show_player',
       'show_discord_status', 'show_discord_rpc', 'show_avatar', 'show_badges',
-      'show_views', 'show_social_links', 'profile_border',
+      'show_views', 'show_social_links', 'profile_border', 'hide_username',
     ]);
     const integerFields = new Set([
       'particle_count', 'background_blur', 'overlay_opacity', 'card_opacity',
       'card_blur', 'card_border_radius', 'music_volume', 'music_start_time', 'avatar_size',
       'background_opacity', 'background_scale', 'profile_opacity', 'profile_border_radius', 'profile_blur',
+      'overlay_color_opacity', 'profile_max_width',
     ]);
     const configFields = [
       'theme', 'primary_color', 'secondary_color', 'accent_color', 'background_color', 'text_color', 'icon_color',
@@ -128,6 +165,12 @@ router.put('/config', authMiddleware, (req: AuthRequest, res) => {
       'layout_style', 'show_avatar', 'avatar_shape', 'avatar_size',
       'show_badges', 'show_views', 'show_social_links',
       'widgets',
+      'card_width', 'card_height', 'card_shadow', 'card_border',
+      'text_align', 'link_size', 'link_gap', 'cursor_color',
+      'username_animation', 'display_name_animation', 'bio_animation',
+      'background_repeat', 'background_attachment', 'background_overlay_color',
+      'overlay_color_opacity', 'player_position', 'custom_favicon_url', 'page_title',
+      'hide_username', 'transition_animation', 'loading_animation', 'profile_max_width',
     ];
     const updates: string[] = [];
     const values: any[] = [];
@@ -160,6 +203,11 @@ router.post('/:id/view', (req, res) => {
   try {
     const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
     const profileId = req.params.id;
+
+    if (viewBotCheck(ip, profileId)) {
+      return res.json({ ok: true, counted: false });
+    }
+
     const today = new Date().toISOString().split('T')[0];
 
     const existing = db.prepare(
@@ -174,9 +222,25 @@ router.post('/:id/view', (req, res) => {
     db.prepare(`INSERT INTO daily_stats (id, profile_id, date, views, unique_visitors) VALUES (?, ?, ?, 1, 1)
       ON CONFLICT(profile_id, date) DO UPDATE SET views = views + 1, unique_visitors = unique_visitors + 1`).run(uuid(), profileId, today);
 
+    const userAgent = String(req.headers['user-agent'] || '');
+    let deviceType = '';
+    let browser = '';
+    let os = '';
+
     try {
-      db.prepare('INSERT INTO analytics (id, profile_id, event_type, visitor_ip, visitor_agent, referer) VALUES (?, ?, ?, ?, ?, ?)').run(
-        uuid(), profileId, 'view', ip, req.headers['user-agent'] || '', req.headers['referer'] || ''
+      const UAParser = (await import('ua-parser-js')).default;
+      const parser = new UAParser(userAgent);
+      const device = parser.getDevice();
+      const browserInfo = parser.getBrowser();
+      const osInfo = parser.getOS();
+      deviceType = device.type || 'desktop';
+      browser = browserInfo.name || '';
+      os = osInfo.name || '';
+    } catch {}
+
+    try {
+      db.prepare('INSERT INTO analytics (id, profile_id, event_type, visitor_ip, visitor_agent, referer, device_type, browser, os) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+        uuid(), profileId, 'view', ip, userAgent, req.headers['referer'] || '', deviceType, browser, os
       );
     } catch {}
 
@@ -214,6 +278,13 @@ router.put('/admin/:userId/ban', authMiddleware, (req: AuthRequest, res) => {
   if (!admin?.is_admin) return res.status(403).json({ error: 'Forbidden' });
   const { active } = req.body;
   db.prepare('UPDATE profiles SET is_active = ? WHERE user_id = ?').run(active ? 1 : 0, req.params.userId);
+
+  const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+  db.prepare('INSERT INTO audit_logs (id, user_id, action, target_type, target_id, details, ip) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+    uuid(), req.userId, active ? 'user_unbanned' : 'user_banned', 'user', req.params.userId,
+    `User ${active ? 'unbanned' : 'banned'}`, ip
+  );
+
   res.json({ ok: true });
 });
 

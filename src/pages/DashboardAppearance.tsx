@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { Save, Upload, X, Check } from "lucide-react";
 import { configApi, uploadApi, profileApi } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
+import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 const FONT_OPTIONS = ["Inter", "Space Grotesk", "JetBrains Mono", "Poppins", "Montserrat"];
 const LAYOUT_OPTIONS = ["centered", "left-aligned", "full-width"];
 
-const TEXT_INPUT = "w-full rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-[#3f3f46] outline-none transition-all focus:border-white/[0.12] focus:bg-white/[0.05]";
+const TEXT_INPUT =
+  "w-full rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-[#3f3f46] outline-none transition-all focus:border-white/[0.12] focus:bg-white/[0.05]";
 const LABEL = "text-[11px] font-semibold text-[#71717a] uppercase tracking-wider mb-2 block";
 
 function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
@@ -18,23 +20,46 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
         onClick={() => onChange(!checked)}
         className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${checked ? "bg-white" : "bg-white/[0.08]"}`}
       >
-        <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-black transition-transform ${checked ? "translate-x-4" : ""}`} />
+        <span
+          className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-black transition-transform ${checked ? "translate-x-4" : ""}`}
+        />
       </button>
     </div>
   );
 }
 
-function SliderControl({ label, value, min, max, step, unit, onChange }: {
-  label: string; value: number; min: number; max: number; step: number; unit: string; onChange: (v: number) => void;
+function SliderControl({
+  label,
+  value,
+  min,
+  max,
+  step,
+  unit,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  unit: string;
+  onChange: (v: number) => void;
 }) {
   return (
     <div>
       <div className="flex justify-between text-[12px] mb-2">
         <span className="text-[#71717a]">{label}</span>
-        <span className="text-[#3f3f46]">{value}{unit}</span>
+        <span className="text-[#3f3f46]">
+          {value}
+          {unit}
+        </span>
       </div>
       <input
-        type="range" min={min} max={max} step={step} value={value}
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full accent-white h-1"
       />
@@ -72,6 +97,25 @@ export default function DashboardAppearance() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [bannerUploading, setBannerUploading] = useState(false);
 
+  // NEW: Link Style
+  const [linkSize, setLinkSize] = useState("normal");
+  const [linkGap, setLinkGap] = useState("normal");
+  const [linkBgColor, setLinkBgColor] = useState("#ffffff08");
+  const [linkBorderRadius, setLinkBorderRadius] = useState(16);
+
+  // NEW: Cursor
+  const [enableCustomCursor, setEnableCustomCursor] = useState(false);
+  const [cursorColor, setCursorColor] = useState("#8b5cf6");
+  const [cursorUrl, setCursorUrl] = useState("");
+
+  // NEW: Page Settings
+  const [pageTitle, setPageTitle] = useState("");
+  const [pageFavicon, setPageFavicon] = useState("");
+
+  // NEW: Transitions
+  const [pageTransition, setPageTransition] = useState("fade");
+  const [loadingAnimation, setLoadingAnimation] = useState("spinner");
+
   useEffect(() => {
     if (!profile?.id) return;
     setLoading(true);
@@ -101,6 +145,21 @@ export default function DashboardAppearance() {
         setShowBadges(d.show_badges !== false);
         setShowViews(d.show_views !== false);
         setShowSocialLinks(d.show_social_links !== false);
+        // Link style
+        setLinkSize(d.link_size || "normal");
+        setLinkGap(d.link_gap || "normal");
+        setLinkBgColor(d.link_bg_color || "#ffffff08");
+        setLinkBorderRadius(d.link_border_radius ?? 16);
+        // Cursor
+        setEnableCustomCursor(!!d.enable_custom_cursor);
+        setCursorColor(d.cursor_color || "#8b5cf6");
+        setCursorUrl(d.cursor_url || "");
+        // Page
+        setPageTitle(d.page_title || "");
+        setPageFavicon(d.page_favicon || "");
+        // Transitions
+        setPageTransition(d.page_transition || "fade");
+        setLoadingAnimation(d.loading_animation || "spinner");
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -132,6 +191,17 @@ export default function DashboardAppearance() {
         show_badges: showBadges,
         show_views: showViews,
         show_social_links: showSocialLinks,
+        link_size: linkSize,
+        link_gap: linkGap,
+        link_bg_color: linkBgColor,
+        link_border_radius: linkBorderRadius,
+        enable_custom_cursor: enableCustomCursor,
+        cursor_color: cursorColor,
+        cursor_url: cursorUrl,
+        page_title: pageTitle,
+        page_favicon: pageFavicon,
+        page_transition: pageTransition,
+        loading_animation: loadingAnimation,
       });
       toast.success("Appearance saved");
     } catch {
@@ -144,7 +214,10 @@ export default function DashboardAppearance() {
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 200 * 1024 * 1024) { toast.error("Max 200 MB"); return; }
+    if (file.size > 200 * 1024 * 1024) {
+      toast.error("Max 200 MB");
+      return;
+    }
     setAvatarUploading(true);
     try {
       const url = await uploadApi.upload(file, "avatar");
@@ -171,7 +244,10 @@ export default function DashboardAppearance() {
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 200 * 1024 * 1024) { toast.error("Max 200 MB"); return; }
+    if (file.size > 200 * 1024 * 1024) {
+      toast.error("Max 200 MB");
+      return;
+    }
     setBannerUploading(true);
     try {
       const url = await uploadApi.upload(file, "banner");
@@ -194,6 +270,20 @@ export default function DashboardAppearance() {
     );
   }
 
+  const SizeButton = ({ value, current, set, label }: { value: string; current: string; set: (v: string) => void; label: string }) => (
+    <button
+      onClick={() => set(value)}
+      className={cn(
+        "px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all cursor-pointer capitalize",
+        current === value
+          ? "bg-white text-black"
+          : "bg-white/[0.04] text-[#a1a1aa] hover:bg-white/[0.08]"
+      )}
+    >
+      {label}
+    </button>
+  );
+
   return (
     <div className="space-y-8">
       <div>
@@ -203,13 +293,10 @@ export default function DashboardAppearance() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
-
           {/* Identity */}
           <div className="rounded-xl border border-white/[0.04] bg-[#0a0a0a] p-6 space-y-6">
             <h3 className="text-[11px] font-semibold text-[#71717a] uppercase tracking-wider">Identity</h3>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {/* Avatar */}
               <div className="flex flex-col items-center gap-4">
                 <label className="text-[11px] font-semibold text-[#71717a] uppercase tracking-wider w-full">Avatar</label>
                 <div className="relative h-24 w-24 rounded-full bg-white/[0.06] overflow-hidden border-2 border-white/[0.06]">
@@ -228,20 +315,27 @@ export default function DashboardAppearance() {
                 </div>
                 <div className="flex gap-2">
                   <label className="cursor-pointer">
-                    <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={handleAvatarUpload} />
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      className="hidden"
+                      onChange={handleAvatarUpload}
+                    />
                     <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-[12px] font-medium text-[#a1a1aa] hover:bg-white/[0.06] hover:text-white transition-all">
                       <Upload size={12} /> Upload
                     </span>
                   </label>
                   {profile?.avatar_url && (
-                    <button onClick={handleAvatarRemove} className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-[12px] font-medium text-[#a1a1aa] hover:bg-red-400/[0.08] hover:text-red-400 transition-all cursor-pointer">
+                    <button
+                      onClick={handleAvatarRemove}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-[12px] font-medium text-[#a1a1aa] hover:bg-red-400/[0.08] hover:text-red-400 transition-all cursor-pointer"
+                    >
                       <X size={12} /> Remove
                     </button>
                   )}
                 </div>
               </div>
 
-              {/* Banner */}
               <div className="flex flex-col gap-4">
                 <label className="text-[11px] font-semibold text-[#71717a] uppercase tracking-wider">Banner</label>
                 <div className="h-28 rounded-xl bg-white/[0.04] overflow-hidden border border-white/[0.06] relative">
@@ -257,7 +351,12 @@ export default function DashboardAppearance() {
                   )}
                 </div>
                 <label className="cursor-pointer">
-                  <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={handleBannerUpload} />
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    className="hidden"
+                    onChange={handleBannerUpload}
+                  />
                   <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-[12px] font-medium text-[#a1a1aa] hover:bg-white/[0.06] hover:text-white transition-all w-full justify-center">
                     <Upload size={12} /> Upload Banner
                   </span>
@@ -274,11 +373,12 @@ export default function DashboardAppearance() {
                 <button
                   key={f}
                   onClick={() => setFontFamily(f)}
-                  className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all cursor-pointer ${
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all cursor-pointer",
                     fontFamily === f
                       ? "bg-white text-black"
                       : "bg-white/[0.04] text-[#a1a1aa] hover:bg-white/[0.08] hover:text-white"
-                  }`}
+                  )}
                   style={{ fontFamily: f }}
                 >
                   {f}
@@ -322,7 +422,15 @@ export default function DashboardAppearance() {
             <label className="text-[11px] font-semibold text-[#71717a] uppercase tracking-wider block">Profile Card</label>
             <SliderControl label="Opacity" value={profileOpacity} min={0} max={100} step={1} unit="%" onChange={setProfileOpacity} />
             <SliderControl label="Blur" value={profileBlur} min={0} max={20} step={1} unit="px" onChange={setProfileBlur} />
-            <SliderControl label="Border Radius" value={profileBorderRadius} min={0} max={32} step={1} unit="px" onChange={setProfileBorderRadius} />
+            <SliderControl
+              label="Border Radius"
+              value={profileBorderRadius}
+              min={0}
+              max={32}
+              step={1}
+              unit="px"
+              onChange={setProfileBorderRadius}
+            />
             <Toggle label="Border" checked={profileBorder} onChange={setProfileBorder} />
             <div>
               <label className={LABEL}>Layout</label>
@@ -331,11 +439,12 @@ export default function DashboardAppearance() {
                   <button
                     key={l}
                     onClick={() => setProfileLayout(l)}
-                    className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all cursor-pointer ${
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all cursor-pointer",
                       profileLayout === l
                         ? "bg-white text-black"
                         : "bg-white/[0.04] text-[#a1a1aa] hover:bg-white/[0.08]"
-                    }`}
+                    )}
                   >
                     {l.charAt(0).toUpperCase() + l.slice(1)}
                   </button>
@@ -350,7 +459,12 @@ export default function DashboardAppearance() {
             <Toggle label="Glow" checked={enableGlow} onChange={setEnableGlow} />
             {enableGlow && (
               <div className="flex items-center gap-3">
-                <input type="color" value={glowColor} onChange={(e) => setGlowColor(e.target.value)} className="w-8 h-8 rounded-lg border border-white/[0.06] bg-transparent cursor-pointer appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-lg [&::-webkit-color-swatch]:border-none" />
+                <input
+                  type="color"
+                  value={glowColor}
+                  onChange={(e) => setGlowColor(e.target.value)}
+                  className="w-8 h-8 rounded-lg border border-white/[0.06] bg-transparent cursor-pointer appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-lg [&::-webkit-color-swatch]:border-none"
+                />
                 <span className="text-[12px] text-[#71717a]">Glow Color</span>
               </div>
             )}
@@ -358,11 +472,21 @@ export default function DashboardAppearance() {
             <Toggle label="Username Effects" checked={enableUsernameEffects} onChange={setEnableUsernameEffects} />
             <Toggle label="Animated Title" checked={enableAnimatedTitle} onChange={setEnableAnimatedTitle} />
             {enableAnimatedTitle && (
-              <input value={animatedTitleText} onChange={(e) => setAnimatedTitleText(e.target.value)} placeholder="Title text" className={TEXT_INPUT} />
+              <input
+                value={animatedTitleText}
+                onChange={(e) => setAnimatedTitleText(e.target.value)}
+                placeholder="Title text"
+                className={TEXT_INPUT}
+              />
             )}
             <Toggle label="Typewriter Effect" checked={enableTypewriter} onChange={setEnableTypewriter} />
             {enableTypewriter && (
-              <input value={typewriterText} onChange={(e) => setTypewriterText(e.target.value)} placeholder="Text to type out" className={TEXT_INPUT} />
+              <input
+                value={typewriterText}
+                onChange={(e) => setTypewriterText(e.target.value)}
+                placeholder="Text to type out"
+                className={TEXT_INPUT}
+              />
             )}
           </div>
 
@@ -373,6 +497,117 @@ export default function DashboardAppearance() {
             <Toggle label="Show Badges" checked={showBadges} onChange={setShowBadges} />
             <Toggle label="Show Views" checked={showViews} onChange={setShowViews} />
             <Toggle label="Show Social Links" checked={showSocialLinks} onChange={setShowSocialLinks} />
+          </div>
+
+          {/* Link Style */}
+          <div className="rounded-xl border border-white/[0.04] bg-[#0a0a0a] p-6 space-y-4">
+            <label className="text-[11px] font-semibold text-[#71717a] uppercase tracking-wider block">Link Style</label>
+            <div>
+              <label className={LABEL}>Size</label>
+              <div className="flex gap-2">
+                <SizeButton value="small" current={linkSize} set={setLinkSize} label="Small" />
+                <SizeButton value="normal" current={linkSize} set={setLinkSize} label="Normal" />
+                <SizeButton value="large" current={linkSize} set={setLinkSize} label="Large" />
+              </div>
+            </div>
+            <div>
+              <label className={LABEL}>Gap</label>
+              <div className="flex gap-2">
+                <SizeButton value="compact" current={linkGap} set={setLinkGap} label="Compact" />
+                <SizeButton value="normal" current={linkGap} set={setLinkGap} label="Normal" />
+                <SizeButton value="relaxed" current={linkGap} set={setLinkGap} label="Relaxed" />
+              </div>
+            </div>
+            <SliderControl
+              label="Border Radius"
+              value={linkBorderRadius}
+              min={0}
+              max={32}
+              step={1}
+              unit="px"
+              onChange={setLinkBorderRadius}
+            />
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={linkBgColor.length >= 7 ? linkBgColor.slice(0, 7) : "#ffffff"}
+                onChange={(e) => setLinkBgColor(e.target.value + "15")}
+                className="w-8 h-8 rounded-lg border border-white/[0.06] bg-transparent cursor-pointer appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-lg [&::-webkit-color-swatch]:border-none"
+              />
+              <span className="text-[12px] text-[#71717a]">Default Background Color</span>
+            </div>
+          </div>
+
+          {/* Cursor */}
+          <div className="rounded-xl border border-white/[0.04] bg-[#0a0a0a] p-6 space-y-4">
+            <label className="text-[11px] font-semibold text-[#71717a] uppercase tracking-wider block">Cursor</label>
+            <Toggle label="Custom Cursor" checked={enableCustomCursor} onChange={setEnableCustomCursor} />
+            {enableCustomCursor && (
+              <>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={cursorColor}
+                    onChange={(e) => setCursorColor(e.target.value)}
+                    className="w-8 h-8 rounded-lg border border-white/[0.06] bg-transparent cursor-pointer appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-lg [&::-webkit-color-swatch]:border-none"
+                  />
+                  <span className="text-[12px] text-[#71717a]">Cursor Color</span>
+                </div>
+                <div>
+                  <label className={LABEL}>Cursor URL</label>
+                  <input
+                    value={cursorUrl}
+                    onChange={(e) => setCursorUrl(e.target.value)}
+                    placeholder="https://example.com/cursor.png"
+                    className={TEXT_INPUT}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Page Settings */}
+          <div className="rounded-xl border border-white/[0.04] bg-[#0a0a0a] p-6 space-y-4">
+            <label className="text-[11px] font-semibold text-[#71717a] uppercase tracking-wider block">Page Settings</label>
+            <div>
+              <label className={LABEL}>Page Title</label>
+              <input
+                value={pageTitle}
+                onChange={(e) => setPageTitle(e.target.value)}
+                placeholder="My Profile"
+                className={TEXT_INPUT}
+              />
+            </div>
+            <div>
+              <label className={LABEL}>Custom Favicon URL</label>
+              <input
+                value={pageFavicon}
+                onChange={(e) => setPageFavicon(e.target.value)}
+                placeholder="https://example.com/favicon.ico"
+                className={TEXT_INPUT}
+              />
+            </div>
+          </div>
+
+          {/* Transitions */}
+          <div className="rounded-xl border border-white/[0.04] bg-[#0a0a0a] p-6 space-y-4">
+            <label className="text-[11px] font-semibold text-[#71717a] uppercase tracking-wider block">Transitions</label>
+            <div>
+              <label className={LABEL}>Page Transition</label>
+              <div className="flex gap-2 flex-wrap">
+                {["fade", "slide", "zoom", "none"].map((opt) => (
+                  <SizeButton key={opt} value={opt} current={pageTransition} set={setPageTransition} label={opt.charAt(0).toUpperCase() + opt.slice(1)} />
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className={LABEL}>Loading Animation</label>
+              <div className="flex gap-2 flex-wrap">
+                {["spinner", "dots", "pulse", "skeleton"].map((opt) => (
+                  <SizeButton key={opt} value={opt} current={loadingAnimation} set={setLoadingAnimation} label={opt.charAt(0).toUpperCase() + opt.slice(1)} />
+                ))}
+              </div>
+            </div>
           </div>
 
           <button
@@ -399,16 +634,19 @@ export default function DashboardAppearance() {
                 borderColor: `${primaryColor}40`,
               }}
             >
-              <div
-                className="p-6 text-center"
-                style={{ fontFamily }}
-              >
+              <div className="p-6 text-center" style={{ fontFamily }}>
                 {showAvatar && (
-                  <div className="mx-auto mb-3 w-20 h-20 rounded-full overflow-hidden border-2" style={{ borderColor: `${primaryColor}60` }}>
+                  <div
+                    className="mx-auto mb-3 w-20 h-20 rounded-full overflow-hidden border-2"
+                    style={{ borderColor: `${primaryColor}60` }}
+                  >
                     {profile?.avatar_url ? (
                       <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-2xl font-bold bg-white/[0.06]" style={{ color: textColor }}>
+                      <div
+                        className="w-full h-full flex items-center justify-center text-2xl font-bold bg-white/[0.06]"
+                        style={{ color: textColor }}
+                      >
                         {(profile?.display_name ?? profile?.username ?? "?")[0].toUpperCase()}
                       </div>
                     )}
@@ -427,7 +665,11 @@ export default function DashboardAppearance() {
                 )}
                 <div className="mt-3 space-y-1.5">
                   {[1, 2].map((i) => (
-                    <div key={i} className="w-full py-2 rounded-lg text-[11px] font-medium border border-white/[0.06] bg-white/[0.04]" style={{ color: textColor }}>
+                    <div
+                      key={i}
+                      className="w-full py-2 rounded-lg text-[11px] font-medium border border-white/[0.06] bg-white/[0.04]"
+                      style={{ color: textColor, borderRadius: `${linkBorderRadius}px` }}
+                    >
                       Link {i}
                     </div>
                   ))}

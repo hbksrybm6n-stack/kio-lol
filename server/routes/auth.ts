@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { v4 as uuid } from 'uuid';
 import db from '../db.js';
 import { JWT_SECRET, authMiddleware, type AuthRequest } from '../middleware/auth.js';
+import { resetBruteForce } from '../middleware/security.js';
 
 const router = Router();
 
@@ -21,6 +22,19 @@ router.post('/register', async (req, res) => {
     db.prepare('INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)').run(id, email, passwordHash);
 
     const token = jwt.sign({ userId: id }, JWT_SECRET, { expiresIn: '30d' });
+
+    const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+    const userAgent = String(req.headers['user-agent'] || '');
+
+    try {
+      db.prepare('INSERT INTO login_history (id, user_id, ip, user_agent, success) VALUES (?, ?, ?, ?, 1)').run(
+        uuid(), id, ip, userAgent
+      );
+      db.prepare('INSERT INTO sessions (id, user_id, token_hash, ip, user_agent, expires_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+        uuid(), id, uuid(), ip, userAgent, new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      );
+    } catch {}
+
     res.json({ token, user: { id, email } });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -33,12 +47,42 @@ router.post('/login', async (req, res) => {
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as any;
-    if (!user) return res.status(400).json({ error: 'Invalid credentials' });
+    if (!user) {
+      const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+      try {
+        db.prepare('INSERT INTO login_history (id, user_id, ip, user_agent, success) VALUES (?, ?, ?, ?, 0)').run(
+          uuid(), 'unknown', ip, String(req.headers['user-agent'] || '')
+        );
+      } catch {}
+      return res.status(400).json({ error: 'Invalid credentials' });
+    }
 
     const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) return res.status(400).json({ error: 'Invalid credentials' });
+    if (!valid) {
+      const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+      try {
+        db.prepare('INSERT INTO login_history (id, user_id, ip, user_agent, success) VALUES (?, ?, ?, ?, 0)').run(
+          uuid(), user.id, ip, String(req.headers['user-agent'] || '')
+        );
+      } catch {}
+      return res.status(400).json({ error: 'Invalid credentials' });
+    }
 
+    resetBruteForce(email);
+
+    const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+    const userAgent = String(req.headers['user-agent'] || '');
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
+
+    try {
+      db.prepare('INSERT INTO login_history (id, user_id, ip, user_agent, success) VALUES (?, ?, ?, ?, 1)').run(
+        uuid(), user.id, ip, userAgent
+      );
+      db.prepare('INSERT INTO sessions (id, user_id, token_hash, ip, user_agent, expires_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+        uuid(), user.id, uuid(), ip, userAgent, new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      );
+    } catch {}
+
     res.json({ token, user: { id: user.id, email: user.email } });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -107,7 +151,13 @@ router.get('/me', authMiddleware, (req: AuthRequest, res) => {
   const user = db.prepare('SELECT id, email FROM users WHERE id = ?').get(req.userId) as any;
   if (!user) return res.status(404).json({ error: 'User not found' });
   const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId) as any;
-  res.json({ user, profile });
+  res.json({
+    user: {
+      ...user,
+      email_verified: true,
+    },
+    profile,
+  });
 });
 
 export default router;

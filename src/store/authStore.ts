@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { authApi } from '@/lib/api';
 
 interface AuthState {
-  user: { id: string; email: string; username?: string; displayName?: string; avatarUrl?: string } | null;
+  user: { id: string; email: string; username?: string; displayName?: string; avatarUrl?: string; role?: string } | null;
   profile: Record<string, any> | null;
   loading: boolean;
   initialized: boolean;
@@ -34,6 +34,7 @@ export const useAuthStore = create<AuthState>((set) => ({
             displayName: profile?.display_name,
             avatarUrl: profile?.avatar_url,
             profileId: profile?.id,
+            role: data.user.role,
           } as any,
           profile: profile,
         });
@@ -56,6 +57,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           displayName: profile?.display_name,
           avatarUrl: profile?.avatar_url,
           profileId: profile?.id,
+          role: data.user.role,
         } as any,
         profile: profile,
       });

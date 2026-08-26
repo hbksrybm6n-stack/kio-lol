@@ -23,8 +23,12 @@ import DashboardWidgets from '@/pages/DashboardWidgets';
 import DashboardAnalytics from '@/pages/DashboardAnalytics';
 import DashboardTemplates from '@/pages/DashboardTemplates';
 import DashboardSettings from '@/pages/DashboardSettings';
+import DashboardAccount from '@/pages/DashboardAccount';
 import AdminDashboard from '@/pages/AdminDashboard';
 import ProfilePage from '@/pages/ProfilePage';
+import DiscoveryPage from '@/pages/DiscoveryPage';
+import LegalPage from '@/pages/LegalPage';
+import CookieBanner from '@/components/CookieBanner';
 
 export default function App() {
   const { initialize, initialized } = useAuthStore();
@@ -55,6 +59,7 @@ export default function App() {
           },
         }}
       />
+      <CookieBanner />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -78,7 +83,11 @@ export default function App() {
           <Route path="analytics" element={<DashboardAnalytics />} />
           <Route path="templates" element={<DashboardTemplates />} />
           <Route path="settings" element={<DashboardSettings />} />
+          <Route path="account" element={<DashboardAccount />} />
         </Route>
+
+        <Route path="/discover" element={<DiscoveryPage />} />
+        <Route path="/legal/:slug" element={<LegalPage />} />
 
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/@:username" element={<ProfilePage />} />

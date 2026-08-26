@@ -232,6 +232,28 @@ export const analyticsApi = {
     const data = await apiFetch(`/analytics/totals/${profileId}`);
     return data.clicks as number;
   },
+  async getReferrers(profileId: string) {
+    return apiFetch(`/analytics/referrers/${profileId}`);
+  },
+  async getDevices(profileId: string) {
+    return apiFetch(`/analytics/devices/${profileId}`);
+  },
+  async getCountries(profileId: string) {
+    return apiFetch(`/analytics/countries/${profileId}`);
+  },
+  async exportCSV(profileId: string) {
+    const token = getToken();
+    const res = await fetch(`${API_URL}/analytics/export/${profileId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `analytics-${profileId}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 };
 
 export const reportsApi = {
@@ -276,5 +298,128 @@ export const uploadApi = {
   },
   async image(file: File) {
     return this.upload(file, 'link');
+  },
+};
+
+export const accountApi = {
+  async changeEmail(newEmail: string, currentPassword: string) {
+    return apiFetch('/account/email', { method: 'PUT', body: JSON.stringify({ newEmail, currentPassword }) });
+  },
+  async changePassword(currentPassword: string, newPassword: string) {
+    return apiFetch('/account/password', { method: 'PUT', body: JSON.stringify({ currentPassword, newPassword }) });
+  },
+  async getLoginHistory() {
+    return apiFetch('/account/login-history');
+  },
+  async getSessions() {
+    return apiFetch('/account/sessions');
+  },
+  async revokeSession(sessionId: string) {
+    return apiFetch(`/account/sessions/${sessionId}`, { method: 'DELETE' });
+  },
+  async revokeAllSessions() {
+    return apiFetch('/account/sessions/revoke-all', { method: 'POST' });
+  },
+  async getSecurity() {
+    return apiFetch('/account/security');
+  },
+};
+
+export const discoveryApi = {
+  async getTrending() {
+    return apiFetch('/discovery/trending');
+  },
+  async getFeatured() {
+    return apiFetch('/discovery/featured');
+  },
+  async getRecent() {
+    return apiFetch('/discovery/recent');
+  },
+  async getDirectory(page = 1, search = '') {
+    return apiFetch(`/discovery/directory?page=${page}&search=${encodeURIComponent(search)}`);
+  },
+  async search(query: string) {
+    return apiFetch(`/discovery/search?q=${encodeURIComponent(query)}`);
+  },
+};
+
+export const adminExtendedApi = {
+  async getStats() {
+    return apiFetch('/admin-extended/stats');
+  },
+  async getAuditLogs(page = 1) {
+    return apiFetch(`/admin-extended/audit-logs?page=${page}`);
+  },
+  async getAnnouncements() {
+    return apiFetch('/admin-extended/announcements');
+  },
+  async createAnnouncement(data: { title: string; content: string; type?: string }) {
+    return apiFetch('/admin-extended/announcements', { method: 'POST', body: JSON.stringify(data) });
+  },
+  async deleteAnnouncement(id: string) {
+    return apiFetch(`/admin-extended/announcements/${id}`, { method: 'DELETE' });
+  },
+  async addStaffNote(userId: string, note: string) {
+    return apiFetch('/admin-extended/staff-notes', { method: 'POST', body: JSON.stringify({ userId, note }) });
+  },
+  async getStaffNotes(userId: string) {
+    return apiFetch(`/admin-extended/staff-notes/${userId}`);
+  },
+  async toggleMaintenance(enabled: boolean) {
+    return apiFetch('/admin-extended/maintenance', { method: 'PUT', body: JSON.stringify({ enabled }) });
+  },
+  async getHealth() {
+    return apiFetch('/admin-extended/health');
+  },
+  async featureProfile(profileId: string) {
+    return apiFetch(`/admin-extended/feature-profile/${profileId}`, { method: 'POST' });
+  },
+};
+
+export const legalApi = {
+  async getPage(slug: string) {
+    return apiFetch(`/legal/${slug}`);
+  },
+  async updatePage(slug: string, data: { title: string; content: string }) {
+    return apiFetch(`/legal/${slug}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
+};
+
+export const moderationApi = {
+  async report(data: { reported_profile_id: string; reason: string; description?: string; category?: string }) {
+    return apiFetch('/moderation/report', { method: 'POST', body: JSON.stringify(data) });
+  },
+  async blockUser(userId: string) {
+    return apiFetch(`/moderation/block/${userId}`, { method: 'POST' });
+  },
+  async unblockUser(userId: string) {
+    return apiFetch(`/moderation/block/${userId}`, { method: 'DELETE' });
+  },
+  async getBlocked() {
+    return apiFetch('/moderation/blocked');
+  },
+  async submitAppeal(data: { reason: string; description?: string }) {
+    return apiFetch('/moderation/appeal', { method: 'POST', body: JSON.stringify(data) });
+  },
+  async getAppeals() {
+    return apiFetch('/moderation/appeals');
+  },
+};
+
+export const linkGroupsApi = {
+  async list() {
+    return apiFetch('/links/groups');
+  },
+  async create(data: { name: string; sort_order?: number }) {
+    return apiFetch('/links/groups', { method: 'POST', body: JSON.stringify(data) });
+  },
+  async update(id: string, data: { name?: string; sort_order?: number; is_visible?: number }) {
+    return apiFetch(`/links/groups/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
+  async delete(id: string) {
+    return apiFetch(`/links/groups/${id}`, { method: 'DELETE' });
+  },
+  async reorder(groups: { id: string; sort_order: number }[]) {
+    return apiFetch('/links/groups/reorder', { method: 'POST', body: JSON.stringify({ groups }) });
   },
 };

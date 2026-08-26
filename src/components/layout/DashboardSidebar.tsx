@@ -15,6 +15,7 @@ import {
   Settings,
   LogOut,
   Shield,
+  UserCog,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { cn } from "@/lib/utils";
@@ -57,6 +58,7 @@ const NAV_SECTIONS = [
     label: "ACCOUNT",
     items: [
       { to: "/dashboard/settings", icon: Settings, label: "Settings" },
+      { to: "/dashboard/account", icon: UserCog, label: "Account" },
     ],
   },
 ];

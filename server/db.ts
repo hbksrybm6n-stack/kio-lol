@@ -218,12 +218,211 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
+  -- Username history
+  CREATE TABLE IF NOT EXISTS username_history (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    old_username TEXT NOT NULL,
+    new_username TEXT NOT NULL,
+    changed_at TEXT DEFAULT (datetime('now'))
+  );
+
+  -- Login history
+  CREATE TABLE IF NOT EXISTS login_history (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    ip TEXT DEFAULT '',
+    user_agent TEXT DEFAULT '',
+    country TEXT DEFAULT '',
+    success INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  -- Active sessions
+  CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL,
+    ip TEXT DEFAULT '',
+    user_agent TEXT DEFAULT '',
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now')),
+    expires_at TEXT NOT NULL
+  );
+
+  -- Blocked users (blocklist)
+  CREATE TABLE IF NOT EXISTS blocked_users (
+    id TEXT PRIMARY KEY,
+    blocker_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    blocked_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(blocker_id, blocked_id)
+  );
+
+  -- Link groups/categories
+  CREATE TABLE IF NOT EXISTS link_groups (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    sort_order INTEGER DEFAULT 0,
+    is_visible INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  -- Reports (enhanced with status history)
+  CREATE TABLE IF NOT EXISTS report_actions (
+    id TEXT PRIMARY KEY,
+    report_id TEXT NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
+    action_by TEXT,
+    action TEXT NOT NULL,
+    notes TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  -- Audit logs
+  CREATE TABLE IF NOT EXISTS audit_logs (
+    id TEXT PRIMARY KEY,
+    user_id TEXT,
+    action TEXT NOT NULL,
+    target_type TEXT DEFAULT '',
+    target_id TEXT DEFAULT '',
+    details TEXT DEFAULT '',
+    ip TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  -- Announcements
+  CREATE TABLE IF NOT EXISTS announcements (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    type TEXT DEFAULT 'info',
+    is_active INTEGER DEFAULT 1,
+    created_by TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    expires_at TEXT
+  );
+
+  -- Staff notes
+  CREATE TABLE IF NOT EXISTS staff_notes (
+    id TEXT PRIMARY KEY,
+    target_user_id TEXT NOT NULL,
+    author_id TEXT NOT NULL,
+    note TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  -- System settings (key-value)
+  CREATE TABLE IF NOT EXISTS system_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT DEFAULT '',
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
+  -- API keys
+  CREATE TABLE IF NOT EXISTS api_keys (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    key_hash TEXT NOT NULL,
+    key_prefix TEXT NOT NULL,
+    permissions TEXT DEFAULT 'read',
+    rate_limit INTEGER DEFAULT 100,
+    is_active INTEGER DEFAULT 1,
+    last_used_at TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  -- Webhooks
+  CREATE TABLE IF NOT EXISTS webhooks (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    url TEXT NOT NULL,
+    events TEXT DEFAULT '[]',
+    secret TEXT DEFAULT '',
+    is_active INTEGER DEFAULT 1,
+    last_triggered_at TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  -- Premium subscriptions
+  CREATE TABLE IF NOT EXISTS subscriptions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    plan TEXT NOT NULL DEFAULT 'free',
+    status TEXT DEFAULT 'active',
+    stripe_customer_id TEXT DEFAULT '',
+    stripe_subscription_id TEXT DEFAULT '',
+    current_period_start TEXT,
+    current_period_end TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
+  -- Appeals
+  CREATE TABLE IF NOT EXISTS appeals (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    reason TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    status TEXT DEFAULT 'pending',
+    reviewed_by TEXT,
+    reviewed_at TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  -- Legal pages content
+  CREATE TABLE IF NOT EXISTS legal_pages (
+    slug TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
+  -- Cookie consent log
+  CREATE TABLE IF NOT EXISTS cookie_consents (
+    id TEXT PRIMARY KEY,
+    visitor_ip TEXT DEFAULT '',
+    visitor_agent TEXT DEFAULT '',
+    consented INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  -- Profile reports (enhanced)
+  CREATE TABLE IF NOT EXISTS profile_reports (
+    id TEXT PRIMARY KEY,
+    reporter_profile_id TEXT REFERENCES profiles(id) ON DELETE SET NULL,
+    reported_profile_id TEXT REFERENCES profiles(id) ON DELETE CASCADE,
+    reason TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    category TEXT DEFAULT 'other',
+    status TEXT DEFAULT 'pending',
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  -- Blocked IPs
+  CREATE TABLE IF NOT EXISTS blocked_ips (
+    id TEXT PRIMARY KEY,
+    ip TEXT NOT NULL,
+    reason TEXT DEFAULT '',
+    blocked_by TEXT,
+    expires_at TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
   CREATE INDEX IF NOT EXISTS idx_profiles_username ON profiles(username);
   CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id);
   CREATE INDEX IF NOT EXISTS idx_links_profile_id ON links(profile_id);
   CREATE INDEX IF NOT EXISTS idx_social_links_profile_id ON social_links(profile_id);
   CREATE INDEX IF NOT EXISTS idx_analytics_profile_id ON analytics(profile_id);
   CREATE INDEX IF NOT EXISTS idx_daily_stats_profile_date ON daily_stats(profile_id, date);
+  CREATE INDEX IF NOT EXISTS idx_login_history_user_id ON login_history(user_id);
+  CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+  CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
+  CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
+  CREATE INDEX IF NOT EXISTS idx_link_groups_profile_id ON link_groups(profile_id);
+  CREATE INDEX IF NOT EXISTS idx_api_keys_user_id ON api_keys(user_id);
+  CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
 `);
 
 const badgeCount = db.prepare('SELECT COUNT(*) as c FROM badges').get() as { c: number };
@@ -254,6 +453,7 @@ const migrateColumn = (table: string, column: string, type: string, def: string)
   } catch { /* column already exists */ }
 };
 
+// Original migrations
 migrateColumn('profiles', 'location', 'TEXT', "''");
 migrateColumn('profile_config', 'icon_color', 'TEXT', "''");
 migrateColumn('profile_config', 'background_opacity', 'INTEGER', '100');
@@ -285,5 +485,54 @@ migrateColumn('profile_config', 'music_start_time', 'INTEGER', '0');
 migrateColumn('profile_config', 'widgets', 'TEXT', "'[]'");
 migrateColumn('daily_stats', 'unique_visitors', 'INTEGER', '0');
 migrateColumn('analytics', 'visitor_ip', 'TEXT', "''");
+
+// New profile columns
+migrateColumn('profiles', 'is_private', 'INTEGER', '0');
+migrateColumn('profiles', 'passcode', 'TEXT', "''");
+migrateColumn('profiles', 'custom_css', 'TEXT', "''");
+migrateColumn('profiles', 'custom_html', 'TEXT', "''");
+migrateColumn('profiles', 'custom_title', 'TEXT', "''");
+migrateColumn('profiles', 'featured', 'INTEGER', '0');
+migrateColumn('profiles', 'premium', 'INTEGER', '0');
+
+// New profile_config columns
+migrateColumn('profile_config', 'card_width', 'TEXT', "'420px'");
+migrateColumn('profile_config', 'card_height', 'TEXT', "'auto'");
+migrateColumn('profile_config', 'card_shadow', 'TEXT', "''");
+migrateColumn('profile_config', 'card_border', 'TEXT', "'0px solid rgba(255,255,255,0.06)'");
+migrateColumn('profile_config', 'text_align', 'TEXT', "'center'");
+migrateColumn('profile_config', 'link_size', 'TEXT', "'normal'");
+migrateColumn('profile_config', 'link_gap', 'TEXT', "'normal'");
+migrateColumn('profile_config', 'cursor_color', 'TEXT', "'#8b5cf6'");
+migrateColumn('profile_config', 'username_animation', 'TEXT', "'none'");
+migrateColumn('profile_config', 'display_name_animation', 'TEXT', "'none'");
+migrateColumn('profile_config', 'bio_animation', 'TEXT', "'none'");
+migrateColumn('profile_config', 'background_repeat', 'TEXT', "'no-repeat'");
+migrateColumn('profile_config', 'background_attachment', 'TEXT', "'scroll'");
+migrateColumn('profile_config', 'background_overlay_color', 'TEXT', "''");
+migrateColumn('profile_config', 'overlay_color_opacity', 'INTEGER', '50');
+migrateColumn('profile_config', 'player_position', 'TEXT', "'bottom-right'");
+migrateColumn('profile_config', 'custom_favicon_url', 'TEXT', "''");
+migrateColumn('profile_config', 'page_title', 'TEXT', "''");
+migrateColumn('profile_config', 'hide_username', 'INTEGER', '0');
+migrateColumn('profile_config', 'transition_animation', 'TEXT', "'fade'");
+migrateColumn('profile_config', 'loading_animation', 'TEXT', "'spinner'");
+migrateColumn('profile_config', 'profile_max_width', 'INTEGER', '420');
+
+// New link columns
+migrateColumn('links', 'group_id', 'TEXT', "''");
+migrateColumn('links', 'thumbnail_url', 'TEXT', "''");
+migrateColumn('links', 'scheduled_at', 'TEXT', "''");
+migrateColumn('links', 'scheduled_end', 'TEXT', "''");
+migrateColumn('links', 'visibility', 'TEXT', "'public'");
+migrateColumn('links', 'target', 'TEXT', "'_blank'");
+migrateColumn('links', 'open_animation', 'TEXT', "'none'");
+
+// New analytics columns
+migrateColumn('analytics', 'device_type', 'TEXT', "''");
+migrateColumn('analytics', 'browser', 'TEXT', "''");
+migrateColumn('analytics', 'os', 'TEXT', "''");
+migrateColumn('analytics', 'country', 'TEXT', "''");
+migrateColumn('analytics', 'screen_width', 'INTEGER', '0');
 
 export default db;

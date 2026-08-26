@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { leaderboardApi } from "@/lib/api";
 import { Eye, Link2, Award } from "lucide-react";
 
 interface Leader {
@@ -15,7 +14,7 @@ interface Leader {
 
 function StarField() {
   const [stars] = useState(() =>
-    Array.from({ length: 60 }, () => ({
+    Array.from({ length: 80 }, () => ({
       x: Math.random() * 100,
       y: Math.random() * 100,
       size: Math.random() * 2 + 0.5,
@@ -58,25 +57,25 @@ const RANK_COLORS: Record<number, string> = {
   2: "from-orange-400 to-orange-600",
 };
 
-const RANK_GLOW: Record<number, string> = {
-  0: "shadow-amber-500/30",
-  1: "shadow-zinc-400/20",
-  2: "shadow-orange-500/20",
-};
-
 export default function LandingPage() {
   const [leaders, setLeaders] = useState<Leader[]>([]);
 
   useEffect(() => {
-    leaderboardApi.getTop().then(setLeaders).catch(() => {});
+    fetch("/api/leaderboard")
+      .then((r) => r.json())
+      .then((d) => { if (d?.data) setLeaders(d.data); })
+      .catch(() => {});
   }, []);
 
   return (
     <div className="min-h-screen bg-[#050505] text-white overflow-x-hidden">
       <StarField />
 
-      <section className="relative z-10 max-w-3xl mx-auto px-5 min-h-screen flex flex-col items-center justify-center text-center gap-8">
+      <section className="relative z-10 max-w-3xl mx-auto px-5 min-h-[85vh] flex flex-col items-center justify-center text-center gap-8">
         <FadeIn>
+          <div className="mb-2">
+            <span className="inline-block px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[11px] font-medium text-[#71717a] mb-5">Now in beta</span>
+          </div>
           <h1 className="text-[2.5rem] sm:text-6xl md:text-[4.5rem] font-extrabold tracking-[-0.04em] leading-[1.0]">
             Your link
             <br />
@@ -85,6 +84,9 @@ export default function LandingPage() {
               everything.
             </span>
           </h1>
+          <p className="text-[15px] text-[#52525b] mt-4 max-w-md mx-auto leading-relaxed">
+            Build a clean, minimal profile page. Share all your links, socials, and content in one place.
+          </p>
         </FadeIn>
 
         <FadeIn delay={100}>
@@ -93,8 +95,16 @@ export default function LandingPage() {
               Sign in
             </Link>
             <Link to="/register" className="px-6 py-3 rounded-full bg-white text-black text-sm font-bold hover:bg-white/90 transition-all">
-              Sign up
+              Get started
             </Link>
+          </div>
+        </FadeIn>
+
+        <FadeIn delay={200} className="mt-4">
+          <div className="flex items-center gap-6 text-[12px] text-[#3f3f46]">
+            <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400/60" /> Free forever</span>
+            <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-violet-400/60" /> Custom themes</span>
+            <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-cyan-400/60" /> Discord integration</span>
           </div>
         </FadeIn>
       </section>
@@ -104,7 +114,7 @@ export default function LandingPage() {
           <FadeIn>
             <div className="text-center mb-8">
               <h2 className="text-2xl font-extrabold tracking-tight text-white">Leaderboard</h2>
-              <p className="text-[13px] text-[#52525b] mt-1.5">Top profiles by views</p>
+              <p className="text-[13px] text-[#52525b] mt-1.5">Most popular profiles on kio.lol</p>
             </div>
           </FadeIn>
 
@@ -114,19 +124,19 @@ export default function LandingPage() {
                 <Link
                   key={l.id}
                   to={`/${l.username}`}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 hover:scale-[1.01] hover:bg-white/[0.04] group ${
-                    i < 3 ? `bg-white/[0.03] shadow-lg ${RANK_GLOW[i] || ""}` : "bg-white/[0.015]"
-                  }`}
+                  className="flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 hover:scale-[1.01] hover:bg-white/[0.04] group bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.08]"
                 >
-                  <span className={`w-7 h-7 rounded-lg bg-gradient-to-br ${RANK_COLORS[i] || "bg-white/[0.06]"} flex items-center justify-center text-[11px] font-bold text-white shrink-0 shadow-md`}>
+                  <span
+                    className={`w-8 h-8 rounded-xl bg-gradient-to-br ${RANK_COLORS[i] || "bg-white/[0.06]"} flex items-center justify-center text-[12px] font-bold text-white shrink-0 shadow-lg`}
+                  >
                     {i + 1}
                   </span>
 
                   {l.avatar_url ? (
-                    <img src={l.avatar_url} alt="" className="w-9 h-9 rounded-xl object-cover shrink-0" />
+                    <img src={l.avatar_url} alt="" className="w-10 h-10 rounded-xl object-cover shrink-0" />
                   ) : (
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center shrink-0">
-                      <span className="text-[13px] font-bold text-violet-400">{l.display_name?.[0]?.toUpperCase() || l.username[0]?.toUpperCase()}</span>
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center shrink-0 border border-white/[0.04]">
+                      <span className="text-[14px] font-bold text-violet-400">{(l.display_name || l.username)[0]?.toUpperCase()}</span>
                     </div>
                   )}
 
@@ -163,6 +173,10 @@ export default function LandingPage() {
           </FadeIn>
         </section>
       )}
+
+      <footer className="relative z-10 border-t border-white/[0.04] py-8 text-center">
+        <p className="text-[11px] text-[#3f3f46]">kio.lol &mdash; build your profile, your way</p>
+      </footer>
     </div>
   );
 }
