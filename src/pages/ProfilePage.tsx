@@ -72,14 +72,19 @@ export default function ProfilePage() {
     setIsPrivateBlocked(false);
     setIsBlocked(false);
     try {
-      const profileData = await profileApi.getByUsername(username!);
-      if (!profileData || profileData.is_banned) {
+      const response = await profileApi.getByUsername(username!);
+      if (!response || response.error) {
+        setNotFound(true);
+        return;
+      }
+      const profileData = response.profile || response;
+      if (profileData.is_banned) {
         setNotFound(true);
         return;
       }
       setProfile(profileData);
-      const [configData, socialsData, linksData, badgesData, groupsData, tagsData] = await Promise.all([
-        configApi.getByProfileId(profileData.id),
+      const configData = response.config || {};
+      const [socialsData, linksData, badgesData, groupsData, tagsData] = await Promise.all([
         fetch(`/api/socials/profile/${profileData.id}`).then((r) => r.json()),
         linksApi.getByProfileId(profileData.id),
         badgesApi.getUserBadges(profileData.id).catch(() => []),
