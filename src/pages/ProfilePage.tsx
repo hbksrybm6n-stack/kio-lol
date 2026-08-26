@@ -659,19 +659,6 @@ export default function ProfilePage() {
                 </motion.p>
               )}
 
-              {/* Copy Link Button */}
-              <motion.button
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.22 }}
-                onClick={handleCopyUrl}
-                className="flex items-center gap-1.5 mt-1 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[11px] text-[#52525b] hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer"
-                style={{ fontFamily: font }}
-              >
-                {copiedUrl ? <Check size={10} /> : <Copy size={10} />}
-                {copiedUrl ? "Copied!" : "Copy Link"}
-              </motion.button>
-
               {/* Bio */}
               {profile.bio && (
                 <motion.p
@@ -883,22 +870,6 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              {/* Share Button */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.6 }}
-                className="mt-6"
-              >
-                <button
-                  onClick={() => setShowShareModal(true)}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-[12px] font-medium text-[#52525b] hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer"
-                  style={{ fontFamily: font }}
-                >
-                  <Share2 size={14} />
-                  Share Profile
-                </button>
-              </motion.div>
             </div>
           </motion.div>
         )}
