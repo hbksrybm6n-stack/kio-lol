@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -27,18 +28,12 @@ import publicApiRoutes from './routes/public-api.js';
 import captchaRoutes from './routes/captcha.js';
 import premiumRoutes from './routes/premium.js';
 
-import { antiSpam } from './middleware/security.js';
+import { antiSpam, bruteForceProtection } from './middleware/security.js';
 import db from './db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const MAX_JSON_SIZE = '210mb';
-
-const csrfTokens = new Map<string, { token: string; expiresAt: number }>();
-
-function generateCsrfToken(): string {
-  return crypto.randomBytes(32).toString('hex');
-}
 
 function sanitizeInput(text: any): any {
   if (typeof text === 'string') {
@@ -57,10 +52,54 @@ function sanitizeInput(text: any): any {
   return text;
 }
 
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      mediaSrc: ["'self'", "https:", "blob:"],
+      connectSrc: ["'self'"],
+      frameSrc: ["'self'", "https://www.youtube.com", "https://open.spotify.com"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
 app.use(cors());
 app.use(express.json({ limit: MAX_JSON_SIZE }));
 app.use(express.urlencoded({ extended: true, limit: MAX_JSON_SIZE }));
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 150,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please slow down.' },
+  skip: (req) => req.path === '/api/health',
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many auth attempts. Try again later.' },
+});
+
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many uploads. Slow down.' },
+});
+
+app.use('/api', apiLimiter);
+app.use('/api/auth', authLimiter);
+app.use('/api/upload', uploadLimiter);
+
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {
   maxAge: '7d',
   immutable: true,
@@ -78,6 +117,9 @@ app.use((req: any, _res, next) => {
   next();
 });
 
+app.use(bruteForceProtection);
+app.use(antiSpam);
+
 app.use((req, res, next) => {
   if (req.path.startsWith('/api/auth') || req.path.startsWith('/api/public')) return next();
   try {
@@ -94,28 +136,27 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get('/api/csrf-token', (req, res) => {
-  const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
-  const token = generateCsrfToken();
-  csrfTokens.set(ip, { token, expiresAt: Date.now() + 60 * 60 * 1000 });
-  res.json({ csrfToken: token });
+const csrfTokens = new Map<string, { token: string; expiresAt: number }>();
+
+app.get('/api/csrf-token', (_req, res) => {
+  const token = crypto.randomBytes(32).toString('hex');
+  const id = crypto.randomBytes(16).toString('hex');
+  csrfTokens.set(id, { token, expiresAt: Date.now() + 60 * 60 * 1000 });
+  res.json({ csrfToken: token, csrfId: id });
 });
 
 app.use((req: any, res, next) => {
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
-    if (req.path.startsWith('/api/') && !req.path.startsWith('/api/csrf-token')) {
-      const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
-      const token = req.headers['x-csrf-token'] || req.body?._csrf;
-      const stored = csrfTokens.get(ip);
-      if (stored && stored.token === token && stored.expiresAt > Date.now()) {
-        csrfTokens.delete(ip);
-        return next();
-      }
-      if (stored && stored.expiresAt <= Date.now()) {
-        csrfTokens.delete(ip);
-      }
-      if (token) {
-        return res.status(403).json({ error: 'Invalid CSRF token' });
+    if (req.path.startsWith('/api/') && !req.path.startsWith('/api/csrf-token') && !req.path.startsWith('/api/health')) {
+      const token = req.headers['x-csrf-token'];
+      const csrfId = req.headers['x-csrf-id'];
+      if (token && csrfId) {
+        const stored = csrfTokens.get(csrfId);
+        if (!stored || stored.token !== token || stored.expiresAt <= Date.now()) {
+          csrfTokens.delete(csrfId);
+          return res.status(403).json({ error: 'Invalid or expired CSRF token' });
+        }
+        csrfTokens.delete(csrfId);
       }
     }
   }

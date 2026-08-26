@@ -16,6 +16,7 @@ import {
   LogOut,
   Shield,
   UserCog,
+  X,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { cn } from "@/lib/utils";
@@ -171,7 +172,13 @@ export default function DashboardSidebar({
             className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
             onClick={onMobileClose}
           />
-          <aside className="fixed inset-y-0 left-0 z-50 w-[260px] bg-[#050505] border-r border-white/[0.04] lg:hidden animate-in slide-in-from-left">
+          <aside className="fixed inset-y-0 left-0 z-50 w-[260px] bg-[#050505] border-r border-white/[0.04] lg:hidden">
+            <button
+              onClick={onMobileClose}
+              className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-lg text-[#52525b] hover:text-white hover:bg-white/[0.06] transition-all cursor-pointer z-50"
+            >
+              <X size={16} />
+            </button>
             {sidebar}
           </aside>
         </>

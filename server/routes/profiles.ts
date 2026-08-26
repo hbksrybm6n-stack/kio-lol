@@ -347,6 +347,39 @@ router.get('/:id/tags', (req, res) => {
   }
 });
 
+router.get('/me/tags', authMiddleware, (req: AuthRequest, res) => {
+  try {
+    const profile = db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+    const tags = db.prepare('SELECT tag FROM profile_tags WHERE profile_id = ?').all(profile.id) as any[];
+    res.json({ tags: tags.map((t: any) => t.tag) });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/me/tags', authMiddleware, (req: AuthRequest, res) => {
+  try {
+    const profile = db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+
+    const { tags } = req.body;
+    if (!Array.isArray(tags)) return res.status(400).json({ error: 'Tags must be an array' });
+    const limitedTags = tags.slice(0, 10).map((t: string) => String(t).trim().toLowerCase()).filter(Boolean);
+
+    db.prepare('DELETE FROM profile_tags WHERE profile_id = ?').run(profile.id);
+    const insert = db.prepare('INSERT INTO profile_tags (id, profile_id, tag) VALUES (?, ?, ?)');
+    const insertAll = db.transaction((items: string[]) => {
+      for (const tag of items) insert.run(uuid(), profile.id, tag);
+    });
+    insertAll(limitedTags);
+
+    res.json({ tags: limitedTags });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.put('/:id/tags', authMiddleware, (req: AuthRequest, res) => {
   try {
     const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId!) as any;
@@ -444,6 +477,29 @@ router.put('/admin/:userId/admin', authMiddleware, (req: AuthRequest, res) => {
   const { isAdmin } = req.body;
   db.prepare('UPDATE profiles SET is_admin = ? WHERE user_id = ?').run(isAdmin ? 1 : 0, req.params.userId);
   res.json({ ok: true });
+});
+
+router.delete('/me', authMiddleware, (req: AuthRequest, res) => {
+  try {
+    const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+
+    db.prepare('DELETE FROM links WHERE profile_id = ?').run(profile.id);
+    db.prepare('DELETE FROM social_links WHERE profile_id = ?').run(profile.id);
+    db.prepare('DELETE FROM user_badges WHERE profile_id = ?').run(profile.id);
+    db.prepare('DELETE FROM profile_tags WHERE profile_id = ?').run(profile.id);
+    db.prepare('DELETE FROM profile_config WHERE profile_id = ?').run(profile.id);
+    db.prepare('UPDATE profiles SET is_active = 0, is_deactivated = 1 WHERE id = ?').run(profile.id);
+
+    const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+    db.prepare('INSERT INTO audit_logs (id, user_id, action, target_type, target_id, details, ip) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+      uuid(), req.userId, 'profile_deleted', 'profile', profile.id, 'Profile soft-deleted by user', ip
+    );
+
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 export default router;

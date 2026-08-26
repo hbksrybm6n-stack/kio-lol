@@ -5,7 +5,7 @@ const requestCounts = new Map<string, { count: number; resetAt: number }>();
 const viewTracker = new Map<string, { count: number; windowStart: number }>();
 
 export function bruteForceProtection(req: Request, res: Response, next: NextFunction) {
-  if (req.path !== '/api/auth/login') return next();
+  if (req.path !== '/api/auth/login' || req.method !== 'POST') return next();
   const email = (req.body?.email || '').toLowerCase().trim();
   if (!email) return next();
   

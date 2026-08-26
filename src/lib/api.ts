@@ -117,10 +117,10 @@ export const profileApi = {
     return apiFetch(`/profiles/check-slug/${slug}`);
   },
   async setTags(tags: string[]) {
-    return apiFetch('/profiles/tags', { method: 'PUT', body: JSON.stringify({ tags }) });
+    return apiFetch('/profiles/me/tags', { method: 'PUT', body: JSON.stringify({ tags }) });
   },
   async getTags() {
-    return apiFetch('/profiles/tags');
+    return apiFetch('/profiles/me/tags');
   },
   async deactivate() {
     return apiFetch('/profiles/deactivate', { method: 'POST' });
