@@ -494,6 +494,18 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS pending_registrations (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL,
+    username TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    code TEXT NOT NULL,
+    attempts INTEGER DEFAULT 0,
+    expires_at TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_pending_registrations_email ON pending_registrations(email);
+
   CREATE INDEX IF NOT EXISTS idx_profiles_username ON profiles(username);
   CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id);
   CREATE INDEX IF NOT EXISTS idx_links_profile_id ON links(profile_id);

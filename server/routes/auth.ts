@@ -15,18 +15,78 @@ function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
+function generateCode(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
 router.post('/register', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+    const { email, password, username } = req.body;
+    if (!email || !password || !username) return res.status(400).json({ error: 'Email, username and password required' });
     if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
 
-    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-    if (existing) return res.status(400).json({ error: 'Email already registered' });
+    const usernameRegex = /^[a-z0-9_]{3,20}$/;
+    if (!usernameRegex.test(username)) return res.status(400).json({ error: 'Username must be 3-20 chars, lowercase letters, numbers, underscores' });
+
+    const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+    if (existingUser) return res.status(400).json({ error: 'Email already registered' });
+
+    const existingProfile = db.prepare('SELECT id FROM profiles WHERE username = ?').get(username);
+    if (existingProfile) return res.status(400).json({ error: 'Username already taken' });
+
+    db.prepare('DELETE FROM pending_registrations WHERE email = ?').run(email);
+
+    const code = generateCode();
+    const passwordHash = await bcrypt.hash(password, 10);
+    const id = uuid();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+    db.prepare('INSERT INTO pending_registrations (id, email, username, password_hash, code, expires_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+      id, email, username, passwordHash, code, expiresAt
+    );
+
+    sendEmail(
+      email,
+      'Verify your kio.lol account',
+      `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
+        <h2 style="color:#111">Your verification code</h2>
+        <p style="color:#555;line-height:1.6">Enter this 6-digit code to complete your registration:</p>
+        <div style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#8b5cf6;text-align:center;padding:24px 0;font-family:monospace">${code}</div>
+        <p style="color:#999;font-size:12px">This code expires in 15 minutes. Ignore if you didn't sign up.</p>
+      </div>`
+    ).catch(() => {});
+
+    res.json({ pendingId: id, email, message: 'Verification code sent to your email' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/register/verify', async (req, res) => {
+  try {
+    const { pendingId, code } = req.body;
+    if (!pendingId || !code) return res.status(400).json({ error: 'Pending ID and code required' });
+
+    const pending = db.prepare('SELECT * FROM pending_registrations WHERE id = ?').get(pendingId) as any;
+    if (!pending) return res.status(400).json({ error: 'Registration session expired. Please try again.' });
+
+    if (new Date(pending.expires_at) < new Date()) {
+      db.prepare('DELETE FROM pending_registrations WHERE id = ?').run(pendingId);
+      return res.status(400).json({ error: 'Code expired. Please register again.' });
+    }
+
+    if (pending.attempts >= 5) {
+      db.prepare('DELETE FROM pending_registrations WHERE id = ?').run(pendingId);
+      return res.status(400).json({ error: 'Too many failed attempts. Please register again.' });
+    }
+
+    if (pending.code !== code) {
+      db.prepare('UPDATE pending_registrations SET attempts = attempts + 1 WHERE id = ?').run(pendingId);
+      return res.status(400).json({ error: 'Invalid code', attemptsLeft: 5 - pending.attempts - 1 });
+    }
 
     const id = uuid();
-    const passwordHash = await bcrypt.hash(password, 10);
-    db.prepare('INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)').run(id, email, passwordHash);
+    db.prepare('INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)').run(id, pending.email, pending.password_hash);
 
     const token = jwt.sign({ userId: id }, JWT_SECRET, { expiresIn: '30d' });
     const refreshToken = crypto.randomBytes(32).toString('hex');
@@ -49,9 +109,40 @@ router.post('/register', async (req, res) => {
       );
     } catch {}
 
-    sendEmail(email, 'Welcome to kio.lol', verificationEmailHtml(uuidv4())).catch(() => {});
+    db.prepare('DELETE FROM pending_registrations WHERE id = ?').run(pendingId);
 
-    res.json({ token, refreshToken, user: { id, email } });
+    sendEmail(pending.email, 'Welcome to kio.lol', verificationEmailHtml(uuidv4())).catch(() => {});
+
+    res.json({ token, refreshToken, user: { id, email: pending.email }, username: pending.username });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/register/resend', async (req, res) => {
+  try {
+    const { pendingId } = req.body;
+    if (!pendingId) return res.status(400).json({ error: 'Pending ID required' });
+
+    const pending = db.prepare('SELECT * FROM pending_registrations WHERE id = ?').get(pendingId) as any;
+    if (!pending) return res.status(400).json({ error: 'Registration session expired. Please try again.' });
+
+    const code = generateCode();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    db.prepare('UPDATE pending_registrations SET code = ?, expires_at = ?, attempts = 0 WHERE id = ?').run(code, expiresAt, pendingId);
+
+    sendEmail(
+      pending.email,
+      'Verify your kio.lol account',
+      `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
+        <h2 style="color:#111">Your new verification code</h2>
+        <p style="color:#555;line-height:1.6">Enter this 6-digit code to complete your registration:</p>
+        <div style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#8b5cf6;text-align:center;padding:24px 0;font-family:monospace">${code}</div>
+        <p style="color:#999;font-size:12px">This code expires in 15 minutes. Ignore if you didn't sign up.</p>
+      </div>`
+    ).catch(() => {});
+
+    res.json({ message: 'New code sent' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

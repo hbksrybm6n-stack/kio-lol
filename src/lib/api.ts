@@ -18,10 +18,16 @@ async function apiFetch(path: string, options: RequestInit = {}) {
 }
 
 export const authApi = {
-  async register(email: string, password: string) {
-    const data = await apiFetch('/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) });
+  async register(email: string, password: string, username: string) {
+    return apiFetch('/auth/register', { method: 'POST', body: JSON.stringify({ email, password, username }) });
+  },
+  async registerVerify(pendingId: string, code: string) {
+    const data = await apiFetch('/auth/register/verify', { method: 'POST', body: JSON.stringify({ pendingId, code }) });
     localStorage.setItem('kio_token', data.token);
     return data;
+  },
+  async registerResend(pendingId: string) {
+    return apiFetch('/auth/register/resend', { method: 'POST', body: JSON.stringify({ pendingId }) });
   },
   async login(email: string, password: string) {
     const data = await apiFetch('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
