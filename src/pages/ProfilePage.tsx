@@ -660,7 +660,7 @@ export default function ProfilePage() {
               )}
 
               {/* Bio */}
-              {profile.bio && (
+              {profile.bio && profile.bio.trim() && !/^\d+$/.test(profile.bio.trim()) && (
                 <motion.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -677,7 +677,7 @@ export default function ProfilePage() {
               )}
 
               {/* Custom Status */}
-              {profile.custom_status && (
+              {profile.custom_status && profile.custom_status.trim() && !/^\d+$/.test(profile.custom_status.trim()) && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
