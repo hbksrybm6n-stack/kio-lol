@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import db from '../db.js';
 import { authMiddleware, JWT_SECRET, type AuthRequest } from '../middleware/auth.js';
 import jwt from 'jsonwebtoken';
+import { sendEmail, securityAlertHtml, verificationEmailHtml } from '../lib/email.js';
 
 const router = Router();
 
@@ -28,6 +29,15 @@ router.put('/email', authMiddleware, async (req: AuthRequest, res) => {
     db.prepare('INSERT INTO audit_logs (id, user_id, action, target_type, target_id, details, ip) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
       uuid(), req.userId, 'email_change', 'user', req.userId, `Email changed to ${newEmail}`, ip
     );
+
+    const emailToken = crypto.randomBytes(32).toString('hex');
+    const emailExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    db.prepare('INSERT INTO email_verifications (id, user_id, email, token, expires_at) VALUES (?, ?, ?, ?, ?)').run(
+      uuid(), req.userId, newEmail, emailToken, emailExpires
+    );
+
+    sendEmail(user.email, 'Email address changed', securityAlertHtml('Your email address was changed to ' + newEmail)).catch(() => {});
+    sendEmail(newEmail, 'Verify your new email', verificationEmailHtml(emailToken)).catch(() => {});
 
     res.json({ ok: true, email: newEmail });
   } catch (err: any) {
@@ -54,6 +64,11 @@ router.put('/password', authMiddleware, async (req: AuthRequest, res) => {
     db.prepare('INSERT INTO audit_logs (id, user_id, action, target_type, target_id, details, ip) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
       uuid(), req.userId, 'password_change', 'user', req.userId, 'Password changed', ip
     );
+
+    const user = db.prepare('SELECT email FROM users WHERE id = ?').get(req.userId) as any;
+    if (user?.email) {
+      sendEmail(user.email, 'Your password was changed', securityAlertHtml('Your kio.lol password was just changed.')).catch(() => {});
+    }
 
     res.json({ ok: true });
   } catch (err: any) {
@@ -215,6 +230,11 @@ router.post('/2fa/confirm', authMiddleware, (req: AuthRequest, res) => {
     }
 
     res.json({ message: '2FA enabled', backupCodes: codes });
+
+    const user2fa = db.prepare('SELECT email FROM users WHERE id = ?').get(req.userId!) as any;
+    if (user2fa?.email) {
+      sendEmail(user2fa.email, 'Two-factor authentication enabled', securityAlertHtml('Two-factor authentication has been enabled on your account.')).catch(() => {});
+    }
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

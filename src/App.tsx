@@ -29,6 +29,7 @@ import ProfilePage from '@/pages/ProfilePage';
 import DiscoveryPage from '@/pages/DiscoveryPage';
 import LegalPage from '@/pages/LegalPage';
 import CookieBanner from '@/components/CookieBanner';
+import VerifyEmailPage from '@/pages/VerifyEmailPage';
 
 export default function App() {
   const { initialize, initialized } = useAuthStore();
@@ -86,6 +87,7 @@ export default function App() {
           <Route path="account" element={<DashboardAccount />} />
         </Route>
 
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/discover" element={<DiscoveryPage />} />
         <Route path="/legal/:slug" element={<LegalPage />} />
 

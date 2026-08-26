@@ -140,6 +140,35 @@ router.delete('/:filename', authMiddleware, (req: AuthRequest, res) => {
   }
 });
 
+router.post('/crop', authMiddleware, upload.single('file'), async (req: AuthRequest, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file' });
+
+  try {
+    const { x = 0, y = 0, width = 100, height = 100, outputWidth = 400, outputHeight = 400 } = req.body;
+
+    const result = await sharp(req.file.path)
+      .extract({
+        left: Number(x),
+        top: Number(y),
+        width: Math.min(Number(width), req.file.size),
+        height: Math.min(Number(height), req.file.size),
+      })
+      .resize(Number(outputWidth), Number(outputHeight))
+      .webp({ quality: 85 })
+      .toBuffer();
+
+    const outName = `cropped-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`;
+    const outDir = req.file.fieldname === 'avatar' ? 'avatars' : 'banners';
+    const outPath = path.join(uploadDir, outDir, outName);
+
+    fs.writeFileSync(outPath, result);
+
+    res.json({ url: `/uploads/${outDir}/${outName}` });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Crop failed' });
+  }
+});
+
 router.use((err: any, _req: any, res: any, _next: any) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {

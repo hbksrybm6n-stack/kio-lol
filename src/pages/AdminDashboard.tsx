@@ -19,9 +19,9 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { profileApi, badgesApi, reportsApi, adminExtendedApi } from "@/lib/api";
+import { profileApi, badgesApi, reportsApi, adminExtendedApi, premiumApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { AuditLog, Announcement, StaffNote, Badge as BadgeType } from "@/types";
+import type { AuditLog, Announcement, StaffNote, Badge as BadgeType, PremiumPlan } from "@/types";
 
 interface UserProfile {
   id: string;
@@ -46,7 +46,7 @@ interface Report {
   reported_user?: { username: string };
 }
 
-type AdminTab = "users" | "reports" | "badges" | "audit" | "announcements" | "notes" | "system";
+type AdminTab = "users" | "reports" | "badges" | "audit" | "announcements" | "notes" | "system" | "premium";
 
 const inputClass =
   "w-full rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-[#3f3f46] outline-none transition-all focus:border-white/[0.12] focus:bg-white/[0.05]";
@@ -91,6 +91,18 @@ export default function AdminDashboard() {
   const [featureSearch, setFeatureSearch] = useState("");
   const [featureProfileId, setFeatureProfileId] = useState("");
 
+  // Premium
+  const [premiumPlans, setPremiumPlans] = useState<PremiumPlan[]>([]);
+  const [showCreatePlan, setShowCreatePlan] = useState(false);
+  const [newPlanName, setNewPlanName] = useState("");
+  const [newPlanMonthly, setNewPlanMonthly] = useState("");
+  const [newPlanYearly, setNewPlanYearly] = useState("");
+  const [newPlanFeatures, setNewPlanFeatures] = useState("");
+  const [premiumUserSearch, setPremiumUserSearch] = useState("");
+  const [premiumSelectedUser, setPremiumSelectedUser] = useState<string | null>(null);
+  const [premiumSelectedPlan, setPremiumSelectedPlan] = useState("");
+  const [premiumExpiry, setPremiumExpiry] = useState("");
+
   useEffect(() => {
     checkAdmin();
   }, []);
@@ -103,6 +115,7 @@ export default function AdminDashboard() {
       if (activeTab === "audit") loadAuditLogs();
       if (activeTab === "announcements") loadAnnouncements();
       if (activeTab === "system") loadSystem();
+      if (activeTab === "premium") loadPremiumPlans();
     }
   }, [activeTab]);
 
@@ -179,6 +192,66 @@ export default function AdminDashboard() {
       setSysHealth(health);
     } catch {
       // empty
+    }
+  };
+
+  const loadPremiumPlans = async () => {
+    try {
+      const data = await premiumApi.getPlans();
+      setPremiumPlans(data || []);
+    } catch {
+      toast.error("Failed to load premium plans");
+    }
+  };
+
+  const handleCreatePlan = async () => {
+    if (!newPlanName.trim()) {
+      toast.error("Plan name is required");
+      return;
+    }
+    try {
+      const plan = await premiumApi.createPlan({
+        name: newPlanName,
+        price_monthly: parseFloat(newPlanMonthly) || 0,
+        price_yearly: parseFloat(newPlanYearly) || 0,
+        features: newPlanFeatures.split(",").map((f) => f.trim()).filter(Boolean),
+      });
+      setPremiumPlans((prev) => [...prev, plan]);
+      setNewPlanName("");
+      setNewPlanMonthly("");
+      setNewPlanYearly("");
+      setNewPlanFeatures("");
+      setShowCreatePlan(false);
+      toast.success("Plan created");
+    } catch {
+      toast.error("Failed to create plan");
+    }
+  };
+
+  const handleDeletePlan = async (planId: string) => {
+    try {
+      await premiumApi.deletePlan(planId);
+      setPremiumPlans((prev) => prev.filter((p) => p.id !== planId));
+      toast.success("Plan deleted");
+    } catch {
+      toast.error("Failed to delete plan");
+    }
+  };
+
+  const handleAssignPremium = async () => {
+    if (!premiumSelectedUser || !premiumSelectedPlan || !premiumExpiry) {
+      toast.error("Fill in all fields");
+      return;
+    }
+    try {
+      await premiumApi.assignPremium(premiumSelectedUser, premiumSelectedPlan, premiumExpiry);
+      setPremiumSelectedUser(null);
+      setPremiumSelectedPlan("");
+      setPremiumExpiry("");
+      setPremiumUserSearch("");
+      toast.success("Premium assigned");
+    } catch {
+      toast.error("Failed to assign premium");
     }
   };
 
@@ -357,6 +430,7 @@ export default function AdminDashboard() {
     { id: "audit", label: "Audit Logs", icon: <ClipboardList size={16} /> },
     { id: "announcements", label: "Announcements", icon: <Megaphone size={16} /> },
     { id: "notes", label: "Staff Notes", icon: <StickyNote size={16} /> },
+    { id: "premium", label: "Premium", icon: <Award size={16} /> },
     { id: "system", label: "System", icon: <Server size={16} /> },
   ];
 
@@ -997,6 +1071,210 @@ export default function AdminDashboard() {
                   <p className="text-[13px] text-[#3f3f46]">Search for a user to manage staff notes.</p>
                 </div>
               )}
+            </>
+          )}
+
+          {/* PREMIUM TAB */}
+          {activeTab === "premium" && (
+            <>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-extrabold tracking-tight text-white">Premium</h2>
+                  <p className="text-[13px] text-[#52525b] mt-1">Manage premium plans and subscriptions.</p>
+                </div>
+                <button
+                  onClick={() => setShowCreatePlan(!showCreatePlan)}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black text-[13px] font-bold hover:bg-white/90 transition-all cursor-pointer"
+                >
+                  {showCreatePlan ? "Cancel" : "+ New Plan"}
+                </button>
+              </div>
+
+              {showCreatePlan && (
+                <div className="rounded-xl border border-white/[0.04] bg-[#0a0a0a] p-6 space-y-4">
+                  <h3 className="text-[14px] font-semibold text-white">Create Premium Plan</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-[11px] font-semibold text-[#71717a] uppercase tracking-wider mb-2 block">Plan Name</label>
+                      <input
+                        value={newPlanName}
+                        onChange={(e) => setNewPlanName(e.target.value)}
+                        placeholder="e.g. Pro"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-[#71717a] uppercase tracking-wider mb-2 block">Monthly Price ($)</label>
+                      <input
+                        value={newPlanMonthly}
+                        onChange={(e) => setNewPlanMonthly(e.target.value)}
+                        placeholder="9.99"
+                        type="number"
+                        step="0.01"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-[#71717a] uppercase tracking-wider mb-2 block">Yearly Price ($)</label>
+                      <input
+                        value={newPlanYearly}
+                        onChange={(e) => setNewPlanYearly(e.target.value)}
+                        placeholder="99.99"
+                        type="number"
+                        step="0.01"
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-[#71717a] uppercase tracking-wider mb-2 block">Features (comma-separated)</label>
+                    <input
+                      value={newPlanFeatures}
+                      onChange={(e) => setNewPlanFeatures(e.target.value)}
+                      placeholder="Custom CSS, Custom HTML, Priority support"
+                      className={inputClass}
+                    />
+                  </div>
+                  <button
+                    onClick={handleCreatePlan}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-black text-[13px] font-bold hover:bg-white/90 transition-all cursor-pointer"
+                  >
+                    Create Plan
+                  </button>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                {premiumPlans.map((plan) => (
+                  <div
+                    key={plan.id}
+                    className="rounded-xl border border-white/[0.04] bg-[#0a0a0a] px-4 py-4 flex items-center justify-between hover:border-white/[0.08] transition-all"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-[#eab308]/[0.12] flex items-center justify-center">
+                        <Award size={18} className="text-[#eab308]" />
+                      </div>
+                      <div>
+                        <p className="text-[13px] font-semibold text-white">{plan.name}</p>
+                        <p className="text-[11px] text-[#3f3f46]">
+                          ${plan.price_monthly}/mo · ${plan.price_yearly}/yr
+                        </p>
+                        {plan.features && plan.features.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {plan.features.map((f, i) => (
+                              <span key={i} className="px-1.5 py-0.5 rounded-md bg-white/[0.04] text-[10px] text-[#71717a]">
+                                {f}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeletePlan(plan.id)}
+                      className="p-2 rounded-lg hover:bg-red-400/[0.08] text-[#52525b] hover:text-red-400 transition-all cursor-pointer"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+                {premiumPlans.length === 0 && (
+                  <div className="rounded-xl border border-white/[0.04] bg-[#0a0a0a] p-8 text-center">
+                    <Award size={32} className="mx-auto text-[#1a1a1a] mb-3" />
+                    <p className="text-[13px] text-[#3f3f46]">No premium plans yet. Create one to get started.</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-white/[0.04] bg-[#0a0a0a] p-6 space-y-4">
+                <h3 className="text-[14px] font-semibold text-white mb-1">Assign Premium to User</h3>
+                <div className="relative">
+                  <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#3f3f46]" />
+                  <input
+                    type="text"
+                    value={premiumUserSearch}
+                    onChange={(e) => {
+                      setPremiumUserSearch(e.target.value);
+                      setPremiumSelectedUser(null);
+                    }}
+                    placeholder="Search user by username..."
+                    className="w-full rounded-xl border border-white/[0.06] bg-white/[0.03] pl-10 pr-4 py-3 text-sm text-white placeholder:text-[#3f3f46] outline-none transition-all focus:border-white/[0.12] focus:bg-white/[0.05]"
+                  />
+                </div>
+                {premiumUserSearch && !premiumSelectedUser && (
+                  <div className="space-y-1.5">
+                    {users
+                      .filter((u) => u.username?.toLowerCase().includes(premiumUserSearch.toLowerCase()))
+                      .slice(0, 10)
+                      .map((user) => (
+                        <button
+                          key={user.id}
+                          onClick={() => {
+                            setPremiumSelectedUser(user.id);
+                            setPremiumUserSearch(user.display_name || user.username);
+                          }}
+                          className="w-full rounded-xl border border-white/[0.04] bg-[#0a0a0a] px-4 py-3 flex items-center gap-3 hover:border-white/[0.08] transition-all cursor-pointer text-left"
+                        >
+                          {user.avatar_url ? (
+                            <img src={user.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-white/[0.06] flex items-center justify-center text-[11px] font-bold text-[#52525b]">
+                              {(user.display_name || user.username || "?")[0].toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-[13px] font-medium text-white">{user.display_name || user.username}</p>
+                            <p className="text-[11px] text-[#3f3f46]">@{user.username}</p>
+                          </div>
+                        </button>
+                      ))}
+                  </div>
+                )}
+                {premiumSelectedUser && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[13px] text-white font-medium">Selected user</p>
+                      <button
+                        onClick={() => setPremiumSelectedUser(null)}
+                        className="text-[12px] text-[#52525b] hover:text-white transition-colors cursor-pointer"
+                      >
+                        Change
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[11px] font-semibold text-[#71717a] uppercase tracking-wider mb-2 block">Plan</label>
+                        <select
+                          value={premiumSelectedPlan}
+                          onChange={(e) => setPremiumSelectedPlan(e.target.value)}
+                          className={cn(inputClass, "appearance-none cursor-pointer")}
+                        >
+                          <option value="">Select plan...</option>
+                          {premiumPlans.map((plan) => (
+                            <option key={plan.id} value={plan.id}>{plan.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-semibold text-[#71717a] uppercase tracking-wider mb-2 block">Expires At</label>
+                        <input
+                          type="date"
+                          value={premiumExpiry}
+                          onChange={(e) => setPremiumExpiry(e.target.value)}
+                          className={inputClass}
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleAssignPremium}
+                      disabled={!premiumSelectedPlan || !premiumExpiry}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-black text-[13px] font-bold hover:bg-white/90 transition-all disabled:opacity-40 cursor-pointer"
+                    >
+                      Assign Premium
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           )}
 

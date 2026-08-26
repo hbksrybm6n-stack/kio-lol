@@ -88,6 +88,7 @@ export default function DashboardProfile() {
   const [hideBadges, setHideBadges] = useState(false);
   const [hideSocialLinks, setHideSocialLinks] = useState(false);
   const [hideViews, setHideViews] = useState(true);
+  const [showVerifiedBadge, setShowVerifiedBadge] = useState(true);
 
   useEffect(() => {
     setDisplayName(profile?.display_name ?? "");
@@ -120,6 +121,7 @@ export default function DashboardProfile() {
         setHideBadges(!!d.hide_badges);
         setHideSocialLinks(!!d.hide_social_links);
         setHideViews(d.hide_views !== false ? true : false);
+        setShowVerifiedBadge(d.show_verified_badge !== 0);
       })
       .catch(() => {})
       .finally(() => setConfigLoaded(true));
@@ -161,6 +163,7 @@ export default function DashboardProfile() {
         hide_badges: hideBadges,
         hide_social_links: hideSocialLinks,
         hide_views: hideViews,
+        show_verified_badge: showVerifiedBadge ? 1 : 0,
       });
       toast.success("Settings saved");
     } catch {
@@ -464,6 +467,7 @@ export default function DashboardProfile() {
               { label: "Hide Badges", checked: hideBadges, set: setHideBadges },
               { label: "Hide Social Links", checked: hideSocialLinks, set: setHideSocialLinks },
               { label: "Hide Views", checked: hideViews, set: setHideViews },
+              { label: "Show Verified Badge", checked: showVerifiedBadge, set: setShowVerifiedBadge },
             ].map((item) => (
               <div key={item.label} className="flex items-center justify-between py-1">
                 <span className="text-[13px] text-white">{item.label}</span>

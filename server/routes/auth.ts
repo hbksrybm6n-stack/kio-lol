@@ -6,6 +6,8 @@ import crypto from 'crypto';
 import db from '../db.js';
 import { JWT_SECRET, authMiddleware, type AuthRequest } from '../middleware/auth.js';
 import { resetBruteForce } from '../middleware/security.js';
+import { sendEmail, loginNotificationHtml, verificationEmailHtml } from '../lib/email.js';
+import { v4 as uuidv4 } from 'uuid';
 
 const router = Router();
 
@@ -46,6 +48,8 @@ router.post('/register', async (req, res) => {
         uuid(), id, refreshTokenHash, ip, userAgent, refreshExpiresAt
       );
     } catch {}
+
+    sendEmail(email, 'Welcome to kio.lol', verificationEmailHtml(uuidv4())).catch(() => {});
 
     res.json({ token, refreshToken, user: { id, email } });
   } catch (err: any) {
@@ -101,6 +105,8 @@ router.post('/login', async (req, res) => {
         uuid(), user.id, refreshTokenHash, ip, userAgent, refreshExpiresAt
       );
     } catch {}
+
+    sendEmail(user.email, 'New login to your account', loginNotificationHtml(ip, userAgent)).catch(() => {});
 
     res.json({ token, refreshToken, user: { id: user.id, email: user.email } });
   } catch (err: any) {

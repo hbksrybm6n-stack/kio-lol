@@ -3,6 +3,7 @@ import { profileApi, configApi, uploadApi } from "@/lib/api";
 import { validateUsername } from "@/lib/utils";
 import { Save, AlertTriangle, ExternalLink, Upload, X, Shield, Tag } from "lucide-react";
 import { Switch } from "@/components/ui/Switch";
+import ImageCrop from "@/components/ImageCrop";
 import toast from "react-hot-toast";
 
 const inputClass = "w-full rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-[#3f3f46] outline-none transition-all focus:border-white/[0.12] focus:bg-white/[0.05]";
@@ -39,6 +40,9 @@ export default function DashboardSettings() {
   const [deactivating, setDeactivating] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
+
+  const [cropImage, setCropImage] = useState<string | null>(null);
+  const [cropType, setCropType] = useState<"avatar" | "banner">("avatar");
 
   useEffect(() => {
     loadProfile();
@@ -169,27 +173,17 @@ export default function DashboardSettings() {
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    try {
-      const url = await uploadApi.upload(file, "avatar");
-      setAvatarUrl(url);
-      await profileApi.update({ avatar_url: url });
-      toast.success("Avatar updated");
-    } catch {
-      toast.error("Failed to upload");
-    }
+    const url = URL.createObjectURL(file);
+    setCropImage(url);
+    setCropType("avatar");
   };
 
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    try {
-      const url = await uploadApi.upload(file, "banner");
-      setBannerUrl(url);
-      await profileApi.update({ banner_url: url });
-      toast.success("Banner updated");
-    } catch {
-      toast.error("Failed to upload");
-    }
+    const url = URL.createObjectURL(file);
+    setCropImage(url);
+    setCropType("banner");
   };
 
   const handleDeactivate = async () => {
@@ -456,6 +450,32 @@ export default function DashboardSettings() {
           </div>
         </div>
       </div>
+
+      {cropImage && (
+        <ImageCrop
+          image={cropImage}
+          aspect={cropType === "avatar" ? 1 : 3}
+          circular={cropType === "avatar"}
+          onCrop={async (blob) => {
+            const file = new File([blob], "crop.webp", { type: "image/webp" });
+            try {
+              const url = await uploadApi.upload(file, cropType);
+              if (cropType === "avatar") setAvatarUrl(url);
+              else setBannerUrl(url);
+              await profileApi.update({ [cropType === "avatar" ? "avatar_url" : "banner_url"]: url });
+              toast.success(`${cropType} updated`);
+            } catch {
+              toast.error("Upload failed");
+            }
+            if (cropImage) URL.revokeObjectURL(cropImage);
+            setCropImage(null);
+          }}
+          onCancel={() => {
+            if (cropImage) URL.revokeObjectURL(cropImage);
+            setCropImage(null);
+          }}
+        />
+      )}
     </div>
   );
 }

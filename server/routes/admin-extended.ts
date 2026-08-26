@@ -515,4 +515,43 @@ router.post('/announcements/schedule', authMiddleware, (req: AuthRequest, res) =
   }
 });
 
+router.get('/premium-plans', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    if (!requireAdmin(req, res)) return;
+    const plans = db.prepare('SELECT * FROM premium_plans ORDER BY price_monthly ASC').all();
+    res.json(plans);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/premium-plans', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    if (!requireAdmin(req, res)) return;
+    const { id, name, price_monthly, price_yearly, features } = req.body;
+    const planId = id || uuid();
+    db.prepare('INSERT OR REPLACE INTO premium_plans (id, name, price_monthly, price_yearly, features) VALUES (?, ?, ?, ?, ?)').run(planId, name, price_monthly || 0, price_yearly || 0, JSON.stringify(features || []));
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/users/:userId/premium', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    if (!requireAdmin(req, res)) return;
+    const { plan, until } = req.body;
+    db.prepare('UPDATE profiles SET role = ?, premium_until = ? WHERE user_id = ?').run(plan || 'premium', until || '', req.params.userId);
+    const profile = db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.params.userId) as any;
+    if (profile) {
+      try {
+        db.prepare('INSERT OR IGNORE INTO user_badges (id, profile_id, badge_id) VALUES (?, ?, ?)').run(uuid(), profile.id, 'b6');
+      } catch {}
+    }
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

@@ -19,6 +19,7 @@ import { SnowEffect } from "@/components/effects/SnowEffect";
 import { ParticleEffect } from "@/components/effects/ParticleEffect";
 import AudioVisualizer from "@/components/AudioVisualizer";
 import ShareModal from "@/components/ShareModal";
+import Captcha from "@/components/Captcha";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 import type { LinkGroup } from "@/types";
@@ -48,6 +49,7 @@ export default function ProfilePage() {
   const [reportReason, setReportReason] = useState("");
   const [reportDescription, setReportDescription] = useState("");
   const [reportCategory, setReportCategory] = useState<string>("other");
+  const [reportCaptchaToken, setReportCaptchaToken] = useState<string | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [linkPasswords, setLinkPasswords] = useState<Record<string, string>>({});
@@ -149,11 +151,13 @@ export default function ProfilePage() {
         reason: reportReason,
         description: reportDescription,
         category: reportCategory,
+        captcha_token: reportCaptchaToken,
       });
       setShowReportModal(false);
       setReportReason("");
       setReportDescription("");
       setReportCategory("other");
+      setReportCaptchaToken(null);
       toast.success("Report submitted");
     } catch {
       toast.error("Failed to submit report");
@@ -946,16 +950,28 @@ export default function ProfilePage() {
                   className="w-full rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-[#3f3f46] outline-none transition-all focus:border-white/[0.12] resize-none"
                 />
               </div>
+              <div>
+                <label className="text-[11px] font-semibold text-[#71717a] uppercase tracking-wider mb-2 block">
+                  Verification
+                </label>
+                <Captcha
+                  onVerified={(token) => setReportCaptchaToken(token)}
+                  onError={() => setReportCaptchaToken(null)}
+                />
+              </div>
               <div className="flex gap-2 justify-end">
                 <button
-                  onClick={() => setShowReportModal(false)}
+                  onClick={() => {
+                    setShowReportModal(false);
+                    setReportCaptchaToken(null);
+                  }}
                   className="px-4 py-2 rounded-xl text-[13px] font-medium text-[#52525b] hover:text-white transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleReport}
-                  disabled={!reportReason.trim()}
+                  disabled={!reportReason.trim() || !reportCaptchaToken}
                   className="px-4 py-2 rounded-xl bg-red-500 text-white text-[13px] font-bold hover:bg-red-600 transition-all disabled:opacity-40 cursor-pointer"
                 >
                   Submit Report

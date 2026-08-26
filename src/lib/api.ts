@@ -526,6 +526,38 @@ export const csrfApi = {
   async getToken() { return apiFetch('/csrf-token'); },
 };
 
+export const captchaApi = {
+  async generate() { return apiFetch('/captcha/generate'); },
+  async verify(id: string, answer: number, token: string) {
+    return apiFetch('/captcha/verify', { method: 'POST', body: JSON.stringify({ id, answer, token }) });
+  },
+};
+
+export const premiumApi = {
+  async getPlans() { return apiFetch('/premium/plans'); },
+  async createPlan(plan: { name: string; price_monthly: number; price_yearly: number; features: string[] }) {
+    return apiFetch('/premium/plans', { method: 'POST', body: JSON.stringify(plan) });
+  },
+  async updatePlan(id: string, updates: Record<string, unknown>) {
+    return apiFetch(`/premium/plans/${id}`, { method: 'PUT', body: JSON.stringify(updates) });
+  },
+  async deletePlan(id: string) {
+    return apiFetch(`/premium/plans/${id}`, { method: 'DELETE' });
+  },
+  async assignPremium(userId: string, planId: string, expiresAt: string) {
+    return apiFetch('/premium/assign', { method: 'POST', body: JSON.stringify({ userId, planId, expiresAt }) });
+  },
+  async removePremium(userId: string) {
+    return apiFetch(`/premium/remove/${userId}`, { method: 'DELETE' });
+  },
+  async getUserPremium(userId: string) {
+    return apiFetch(`/premium/user/${userId}`);
+  },
+  async getAllSubscriptions() {
+    return apiFetch('/premium/subscriptions');
+  },
+};
+
 export const publicProfileApi = {
   async getFull(username: string) { return apiFetch(`/public/profile/${username}`); },
   async getLinks(username: string) { return apiFetch(`/public/profile/${username}/links`); },
