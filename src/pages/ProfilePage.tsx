@@ -190,15 +190,27 @@ export default function ProfilePage() {
     if (!hasMedia && !entered) setEntered(true);
   }, [loading, profile, hasMedia, entered]);
 
-  const handleCopyUrl = () => {
+  const handleCopyUrl = async () => {
     const url = `${window.location.origin}/@${username}`;
-    navigator.clipboard.writeText(url).then(() => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
       setCopiedUrl(true);
       toast.success("Link copied!");
       setTimeout(() => setCopiedUrl(false), 2000);
-    }).catch(() => {
+    } catch {
       toast.error("Failed to copy");
-    });
+    }
   };
 
   const handleUnlockLink = async (linkId: string) => {

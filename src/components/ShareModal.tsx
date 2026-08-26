@@ -18,7 +18,18 @@ export default function ShareModal({ open, onClose, username, profileId, display
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(profileUrl);
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(profileUrl);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = profileUrl;
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
       setCopied(true);
       toast.success("Link copied!");
       setTimeout(() => setCopied(false), 2000);
