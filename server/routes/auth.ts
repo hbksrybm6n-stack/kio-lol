@@ -46,7 +46,7 @@ router.post('/register', async (req, res) => {
     );
 
     const mockMode = !process.env.SMTP_USER;
-    const emailResult = await sendEmail(
+    sendEmail(
       email,
       'Verify your kio.lol account',
       `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
@@ -55,7 +55,7 @@ router.post('/register', async (req, res) => {
         <div style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#8b5cf6;text-align:center;padding:24px 0;font-family:monospace">${code}</div>
         <p style="color:#999;font-size:12px">This code expires in 15 minutes. Ignore if you didn't sign up.</p>
       </div>`
-    ).catch(() => ({ ok: false }));
+    ).catch(() => {});
 
     res.json({ pendingId: id, email, code: mockMode ? code : undefined, message: 'Verification code sent to your email' });
   } catch (err: any) {
@@ -133,7 +133,7 @@ router.post('/register/resend', async (req, res) => {
     db.prepare('UPDATE pending_registrations SET code = ?, expires_at = ?, attempts = 0 WHERE id = ?').run(code, expiresAt, pendingId);
 
     const mockMode = !process.env.SMTP_USER;
-    const emailResult = await sendEmail(
+    sendEmail(
       pending.email,
       'Verify your kio.lol account',
       `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
@@ -142,7 +142,7 @@ router.post('/register/resend', async (req, res) => {
         <div style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#8b5cf6;text-align:center;padding:24px 0;font-family:monospace">${code}</div>
         <p style="color:#999;font-size:12px">This code expires in 15 minutes. Ignore if you didn't sign up.</p>
       </div>`
-    ).catch(() => ({ ok: false }));
+    ).catch(() => {});
 
     res.json({ message: 'New code sent', code: mockMode ? code : undefined });
   } catch (err: any) {
