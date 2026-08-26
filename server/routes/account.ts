@@ -65,9 +65,9 @@ router.put('/password', authMiddleware, async (req: AuthRequest, res) => {
       uuid(), req.userId, 'password_change', 'user', req.userId, 'Password changed', ip
     );
 
-    const user = db.prepare('SELECT email FROM users WHERE id = ?').get(req.userId) as any;
-    if (user?.email) {
-      sendEmail(user.email, 'Your password was changed', securityAlertHtml('Your kio.lol password was just changed.')).catch(() => {});
+    const userData = db.prepare('SELECT email FROM users WHERE id = ?').get(req.userId) as any;
+    if (userData?.email) {
+      sendEmail(userData.email, 'Your password was changed', securityAlertHtml('Your kio.lol password was just changed.')).catch(() => {});
     }
 
     res.json({ ok: true });
