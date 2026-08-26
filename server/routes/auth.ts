@@ -34,121 +34,27 @@ router.post('/register', async (req, res) => {
     const existingProfile = db.prepare('SELECT id FROM profiles WHERE username = ?').get(username);
     if (existingProfile) return res.status(400).json({ error: 'Username already taken' });
 
-    const smtpConfigured = !!(process.env.SMTP_USER && process.env.SMTP_PASS);
-
-    if (smtpConfigured) {
-      db.prepare('DELETE FROM pending_registrations WHERE email = ?').run(email);
-      const code = generateCode();
-      const passwordHash = await bcrypt.hash(password, 10);
-      const id = uuid();
-      const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-      db.prepare('INSERT INTO pending_registrations (id, email, username, password_hash, code, expires_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, email, username, passwordHash, code, expiresAt);
-      sendEmail(email, 'Verify your kio.lol account', `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px"><h2 style="color:#111">Your verification code</h2><p style="color:#555;line-height:1.6">Enter this 6-digit code to complete your registration:</p><div style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#8b5cf6;text-align:center;padding:24px 0;font-family:monospace">${code}</div><p style="color:#999;font-size:12px">This code expires in 15 minutes. Ignore if you didn't sign up.</p></div>`).catch(() => {});
-      res.json({ pendingId: id, email, requiresVerification: true, message: 'Verification code sent' });
-    } else {
-      const id = uuid();
-      const passwordHash = await bcrypt.hash(password, 10);
-      db.prepare('INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)').run(id, email, passwordHash);
-      const token = jwt.sign({ userId: id }, JWT_SECRET, { expiresIn: '30d' });
-      const refreshToken = crypto.randomBytes(32).toString('hex');
-      const refreshTokenHash = hashToken(refreshToken);
-      const refreshExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-      db.prepare('INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)').run(uuid(), id, refreshTokenHash, refreshExpiresAt);
-      const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
-      const userAgent = String(req.headers['user-agent'] || '');
-      try {
-        db.prepare('INSERT INTO login_history (id, user_id, ip, user_agent, success) VALUES (?, ?, ?, ?, 1)').run(uuid(), id, ip, userAgent);
-        db.prepare('INSERT INTO sessions (id, user_id, token_hash, ip, user_agent, expires_at) VALUES (?, ?, ?, ?, ?, ?)').run(uuid(), id, refreshTokenHash, ip, userAgent, refreshExpiresAt);
-      } catch {}
-      res.json({ token, refreshToken, user: { id, email }, username, requiresVerification: false });
-    }
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.post('/register/verify', async (req, res) => {
-  try {
-    const { pendingId, code } = req.body;
-    if (!pendingId || !code) return res.status(400).json({ error: 'Pending ID and code required' });
-
-    const pending = db.prepare('SELECT * FROM pending_registrations WHERE id = ?').get(pendingId) as any;
-    if (!pending) return res.status(400).json({ error: 'Registration session expired. Please try again.' });
-
-    if (new Date(pending.expires_at) < new Date()) {
-      db.prepare('DELETE FROM pending_registrations WHERE id = ?').run(pendingId);
-      return res.status(400).json({ error: 'Code expired. Please register again.' });
-    }
-
-    if (pending.attempts >= 5) {
-      db.prepare('DELETE FROM pending_registrations WHERE id = ?').run(pendingId);
-      return res.status(400).json({ error: 'Too many failed attempts. Please register again.' });
-    }
-
-    if (pending.code !== code) {
-      db.prepare('UPDATE pending_registrations SET attempts = attempts + 1 WHERE id = ?').run(pendingId);
-      return res.status(400).json({ error: 'Invalid code', attemptsLeft: 5 - pending.attempts - 1 });
-    }
-
     const id = uuid();
-    db.prepare('INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)').run(id, pending.email, pending.password_hash);
+    const passwordHash = await bcrypt.hash(password, 10);
+    db.prepare('INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)').run(id, email, passwordHash);
 
     const token = jwt.sign({ userId: id }, JWT_SECRET, { expiresIn: '30d' });
     const refreshToken = crypto.randomBytes(32).toString('hex');
     const refreshTokenHash = hashToken(refreshToken);
     const refreshExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    db.prepare('INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)').run(
-      uuid(), id, refreshTokenHash, refreshExpiresAt
-    );
+    db.prepare('INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)').run(uuid(), id, refreshTokenHash, refreshExpiresAt);
 
     const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
     const userAgent = String(req.headers['user-agent'] || '');
-
     try {
-      db.prepare('INSERT INTO login_history (id, user_id, ip, user_agent, success) VALUES (?, ?, ?, ?, 1)').run(
-        uuid(), id, ip, userAgent
-      );
-      db.prepare('INSERT INTO sessions (id, user_id, token_hash, ip, user_agent, expires_at) VALUES (?, ?, ?, ?, ?, ?)').run(
-        uuid(), id, refreshTokenHash, ip, userAgent, refreshExpiresAt
-      );
+      db.prepare('INSERT INTO login_history (id, user_id, ip, user_agent, success) VALUES (?, ?, ?, ?, 1)').run(uuid(), id, ip, userAgent);
+      db.prepare('INSERT INTO sessions (id, user_id, token_hash, ip, user_agent, expires_at) VALUES (?, ?, ?, ?, ?, ?)').run(uuid(), id, refreshTokenHash, ip, userAgent, refreshExpiresAt);
     } catch {}
 
-    db.prepare('DELETE FROM pending_registrations WHERE id = ?').run(pendingId);
+    sendEmail(email, 'Welcome to kio.lol', verificationEmailHtml(uuidv4())).catch(() => {});
 
-    sendEmail(pending.email, 'Welcome to kio.lol', verificationEmailHtml(uuidv4())).catch(() => {});
-
-    res.json({ token, refreshToken, user: { id, email: pending.email }, username: pending.username });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.post('/register/resend', async (req, res) => {
-  try {
-    const { pendingId } = req.body;
-    if (!pendingId) return res.status(400).json({ error: 'Pending ID required' });
-
-    const pending = db.prepare('SELECT * FROM pending_registrations WHERE id = ?').get(pendingId) as any;
-    if (!pending) return res.status(400).json({ error: 'Registration session expired. Please try again.' });
-
-    const code = generateCode();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-    db.prepare('UPDATE pending_registrations SET code = ?, expires_at = ?, attempts = 0 WHERE id = ?').run(code, expiresAt, pendingId);
-
-    const mockMode = !process.env.SMTP_USER;
-    sendEmail(
-      pending.email,
-      'Verify your kio.lol account',
-      `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
-        <h2 style="color:#111">Your new verification code</h2>
-        <p style="color:#555;line-height:1.6">Enter this 6-digit code to complete your registration:</p>
-        <div style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#8b5cf6;text-align:center;padding:24px 0;font-family:monospace">${code}</div>
-        <p style="color:#999;font-size:12px">This code expires in 15 minutes. Ignore if you didn't sign up.</p>
-      </div>`
-    ).catch(() => {});
-
-    res.json({ message: 'New code sent', code: mockMode ? code : undefined });
+    res.json({ token, refreshToken, user: { id, email }, username, requiresVerification: false });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
