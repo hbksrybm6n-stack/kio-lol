@@ -121,7 +121,9 @@ export default function DashboardSocials() {
                 className={`${inputClass} appearance-none`}
                 style={{ colorScheme: "dark" }}
               >
-                {Object.keys(SOCIAL_PLATFORMS).map((k) => (
+                {Object.keys(SOCIAL_PLATFORMS)
+                .filter((k) => isNew || k === editing.platform || !socials.some((s) => s.platform === k))
+                .map((k) => (
                   <option key={k} value={k} style={{ backgroundColor: "#0a0a0a", color: "#fff" }}>
                     {SOCIAL_PLATFORMS[k as SocialPlatform].name}
                   </option>
