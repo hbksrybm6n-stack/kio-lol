@@ -5,19 +5,19 @@ import { contentModerator } from '../middleware/security.js';
 
 const router = Router();
 
-router.get('/profile/:username', (req, res) => {
+router.get('/profile/:username', async (req, res) => {
   try {
-    const profile = db.prepare('SELECT * FROM profiles WHERE username = ? AND is_active = 1').get(req.params.username) as any;
+    const profile = await db.prepare('SELECT * FROM profiles WHERE username = ? AND is_active = 1').get(req.params.username) as any;
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
 
-    const config = db.prepare('SELECT * FROM profile_config WHERE profile_id = ?').get(profile.id) as any;
+    const config = await db.prepare('SELECT * FROM profile_config WHERE profile_id = ?').get(profile.id) as any;
     if (config && typeof config.widgets === 'string') {
       try { config.widgets = JSON.parse(config.widgets); } catch { config.widgets = []; }
     }
 
-    const links = db.prepare("SELECT * FROM links WHERE profile_id = ? AND is_active = 1 AND visibility = 'public' ORDER BY sort_order ASC").all(profile.id);
-    const socials = db.prepare('SELECT * FROM social_links WHERE profile_id = ? AND is_active = 1 ORDER BY sort_order ASC').all(profile.id);
-    const badges = db.prepare(
+    const links = await db.prepare("SELECT * FROM links WHERE profile_id = ? AND is_active = 1 AND visibility = 'public' ORDER BY sort_order ASC").all(profile.id);
+    const socials = await db.prepare('SELECT * FROM social_links WHERE profile_id = ? AND is_active = 1 ORDER BY sort_order ASC').all(profile.id);
+    const badges = await db.prepare(
       'SELECT b.name, b.icon, b.color, b.description FROM user_badges ub JOIN badges b ON ub.badge_id = b.id WHERE ub.profile_id = ?'
     ).all(profile.id);
 
@@ -45,9 +45,9 @@ router.get('/profile/:username', (req, res) => {
   }
 });
 
-router.get('/leaderboard', (_req, res) => {
+router.get('/leaderboard', async (_req, res) => {
   try {
-    const leaders = db.prepare(`
+    const leaders = await db.prepare(`
       SELECT p.id, p.username, p.display_name, p.avatar_url, p.view_count, p.bio, p.created_at,
         (SELECT COUNT(*) FROM links WHERE profile_id = p.id AND is_active = 1) as link_count,
         (SELECT COUNT(*) FROM user_badges WHERE profile_id = p.id) as badge_count
@@ -62,9 +62,9 @@ router.get('/leaderboard', (_req, res) => {
   }
 });
 
-router.get('/featured', (_req, res) => {
+router.get('/featured', async (_req, res) => {
   try {
-    const profiles = db.prepare(`
+    const profiles = await db.prepare(`
       SELECT p.id, p.username, p.display_name, p.avatar_url, p.banner_url, p.view_count, p.bio, p.created_at,
         (SELECT COUNT(*) FROM links WHERE profile_id = p.id AND is_active = 1) as link_count
       FROM profiles p
@@ -78,7 +78,7 @@ router.get('/featured', (_req, res) => {
   }
 });
 
-router.post('/report', (req, res) => {
+router.post('/report', async (req, res) => {
   try {
     const { reported_profile_id, reason, description, category } = req.body;
     if (!reported_profile_id || !reason) return res.status(400).json({ error: 'Required fields missing' });
@@ -89,7 +89,7 @@ router.post('/report', (req, res) => {
     }
 
     const id = uuid();
-    db.prepare('INSERT INTO profile_reports (id, reported_profile_id, reason, description, category) VALUES (?, ?, ?, ?, ?)').run(
+    await db.prepare('INSERT INTO profile_reports (id, reported_profile_id, reason, description, category) VALUES (?, ?, ?, ?, ?)').run(
       id, reported_profile_id, reason, description || '', category || 'other'
     );
 

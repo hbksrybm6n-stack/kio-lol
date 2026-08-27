@@ -29,4 +29,8 @@ services:
         value: "kio.lol <noreply@kio.lol>"
       - key: CAPTCHA_SECRET
         value: kio-lol-captcha-2026-secret
+      - key: TURSO_DB_URL
+        value: ""
+      - key: TURSO_AUTH_TOKEN
+        value: ""
     healthCheckPath: /api/health

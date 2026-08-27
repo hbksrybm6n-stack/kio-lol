@@ -11,7 +11,7 @@ function signAnswer(answer: number, id: string): string {
 
 const router = Router();
 
-router.get('/generate', (_req, res) => {
+router.get('/generate', async (_req, res) => {
   const a = Math.floor(Math.random() * 20) + 1;
   const b = Math.floor(Math.random() * 20) + 1;
   const ops = ['+', '-', '*'] as const;
@@ -26,26 +26,26 @@ router.get('/generate', (_req, res) => {
   const signature = signAnswer(answer, id);
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-  db.prepare('INSERT INTO captcha_tokens (id, token, expires_at) VALUES (?, ?, ?)').run(id, token, expiresAt);
+  await db.prepare('INSERT INTO captcha_tokens (id, token, expires_at) VALUES (?, ?, ?)').run(id, token, expiresAt);
 
   res.json({ id, question: `${a} ${op} ${b} = ?`, token, signature });
 });
 
-router.post('/verify', (req, res) => {
+router.post('/verify', async (req, res) => {
   const { id, answer, token } = req.body;
   if (!id || answer === undefined || !token) {
     return res.status(400).json({ verified: false, error: 'Missing data' });
   }
 
-  const record = db.prepare('SELECT * FROM captcha_tokens WHERE id = ? AND token = ? AND verified = 0').get(id, token) as any;
+  const record = await db.prepare('SELECT * FROM captcha_tokens WHERE id = ? AND token = ? AND verified = 0').get(id, token) as any;
   if (!record) return res.status(400).json({ verified: false, error: 'Invalid captcha' });
 
   if (new Date(record.expires_at) < new Date()) {
-    db.prepare('DELETE FROM captcha_tokens WHERE id = ?').run(id);
+    await db.prepare('DELETE FROM captcha_tokens WHERE id = ?').run(id);
     return res.status(400).json({ verified: false, error: 'Expired' });
   }
 
-  db.prepare('UPDATE captcha_tokens SET verified = 1 WHERE id = ?').run(id);
+  await db.prepare('UPDATE captcha_tokens SET verified = 1 WHERE id = ?').run(id);
   res.json({ verified: true });
 });
 

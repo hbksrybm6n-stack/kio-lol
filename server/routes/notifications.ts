@@ -5,14 +5,14 @@ import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
-router.get('/', authMiddleware, (req: AuthRequest, res) => {
+router.get('/', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.min(50, parseInt(req.query.limit as string) || 20);
     const offset = (page - 1) * limit;
 
-    const total = db.prepare('SELECT COUNT(*) as count FROM notifications WHERE user_id = ?').get(req.userId!) as any;
-    const notifications = db.prepare(
+    const total = await db.prepare('SELECT COUNT(*) as count FROM notifications WHERE user_id = ?').get(req.userId!) as any;
+    const notifications = await db.prepare(
       'SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?'
     ).all(req.userId!, limit, offset);
 
@@ -25,9 +25,9 @@ router.get('/', authMiddleware, (req: AuthRequest, res) => {
   }
 });
 
-router.get('/unread-count', authMiddleware, (req: AuthRequest, res) => {
+router.get('/unread-count', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const result = db.prepare(
+    const result = await db.prepare(
       'SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND read = 0'
     ).get(req.userId!) as any;
     res.json({ count: result?.count || 0 });
@@ -36,36 +36,36 @@ router.get('/unread-count', authMiddleware, (req: AuthRequest, res) => {
   }
 });
 
-router.put('/:id/read', authMiddleware, (req: AuthRequest, res) => {
+router.put('/:id/read', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    db.prepare('UPDATE notifications SET read = 1 WHERE id = ? AND user_id = ?').run(req.params.id, req.userId!);
+    await db.prepare('UPDATE notifications SET read = 1 WHERE id = ? AND user_id = ?').run(req.params.id, req.userId!);
     res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.put('/read-all', authMiddleware, (req: AuthRequest, res) => {
+router.put('/read-all', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    db.prepare('UPDATE notifications SET read = 1 WHERE user_id = ? AND read = 0').run(req.userId!);
+    await db.prepare('UPDATE notifications SET read = 1 WHERE user_id = ? AND read = 0').run(req.userId!);
     res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.delete('/:id', authMiddleware, (req: AuthRequest, res) => {
+router.delete('/:id', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    db.prepare('DELETE FROM notifications WHERE id = ? AND user_id = ?').run(req.params.id, req.userId!);
+    await db.prepare('DELETE FROM notifications WHERE id = ? AND user_id = ?').run(req.params.id, req.userId!);
     res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-export function createNotification(userId: string, type: string, title: string, message: string) {
+export async function createNotification(userId: string, type: string, title: string, message: string) {
   try {
-    db.prepare('INSERT INTO notifications (id, user_id, type, title, message) VALUES (?, ?, ?, ?, ?)').run(
+    await db.prepare('INSERT INTO notifications (id, user_id, type, title, message) VALUES (?, ?, ?, ?, ?)').run(
       uuid(), userId, type, title, message
     );
   } catch {}

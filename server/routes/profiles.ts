@@ -7,11 +7,11 @@ import { viewBotCheck, contentModerator } from '../middleware/security.js';
 
 const router = Router();
 
-router.get('/me', authMiddleware, (req: AuthRequest, res) => {
-  const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+router.get('/me', authMiddleware, async (req: AuthRequest, res) => {
+  const profile = await db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId!) as any;
   if (!profile) return res.status(404).json({ error: 'Profile not found' });
-  const user = db.prepare('SELECT id, email FROM users WHERE id = ?').get(req.userId!) as any;
-  const emailVerification = db.prepare(
+  const user = await db.prepare('SELECT id, email FROM users WHERE id = ?').get(req.userId!) as any;
+  const emailVerification = await db.prepare(
     'SELECT verified FROM email_verifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 1'
   ).get(req.userId!) as any;
   res.json({
@@ -21,11 +21,11 @@ router.get('/me', authMiddleware, (req: AuthRequest, res) => {
   });
 });
 
-router.get('/username/:username', optionalAuth, (req: AuthRequest, res) => {
+router.get('/username/:username', optionalAuth, async (req: AuthRequest, res) => {
   try {
-    let profile = db.prepare('SELECT * FROM profiles WHERE username = ? AND is_active = 1').get(req.params.username) as any;
+    let profile = await db.prepare('SELECT * FROM profiles WHERE username = ? AND is_active = 1').get(req.params.username) as any;
     if (!profile) {
-      profile = db.prepare('SELECT * FROM profiles WHERE slug = ? AND slug != \'\' AND is_active = 1').get(req.params.username) as any;
+      profile = await db.prepare('SELECT * FROM profiles WHERE slug = ? AND slug != \'\' AND is_active = 1').get(req.params.username) as any;
     }
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
 
@@ -47,12 +47,12 @@ router.get('/username/:username', optionalAuth, (req: AuthRequest, res) => {
       }
     }
 
-    const config = db.prepare('SELECT * FROM profile_config WHERE profile_id = ?').get(profile.id) as any;
+    const config = await db.prepare('SELECT * FROM profile_config WHERE profile_id = ?').get(profile.id) as any;
     if (config && typeof config.widgets === 'string') {
       try { config.widgets = JSON.parse(config.widgets); } catch { config.widgets = []; }
     }
 
-    const tags = db.prepare('SELECT tag FROM profile_tags WHERE profile_id = ?').all(profile.id) as any[];
+    const tags = await db.prepare('SELECT tag FROM profile_tags WHERE profile_id = ?').all(profile.id) as any[];
     profile.tags = tags.map((t: any) => t.tag);
 
     res.json({ profile, config });
@@ -61,11 +61,11 @@ router.get('/username/:username', optionalAuth, (req: AuthRequest, res) => {
   }
 });
 
-router.get('/config', authMiddleware, (req: AuthRequest, res) => {
+router.get('/config', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+    const profile = await db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId!) as any;
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
-    const config = db.prepare('SELECT * FROM profile_config WHERE profile_id = ?').get(profile.id) as any;
+    const config = await db.prepare('SELECT * FROM profile_config WHERE profile_id = ?').get(profile.id) as any;
     if (config && typeof config.widgets === 'string') {
       try { config.widgets = JSON.parse(config.widgets); } catch { config.widgets = []; }
     }
@@ -75,40 +75,40 @@ router.get('/config', authMiddleware, (req: AuthRequest, res) => {
   }
 });
 
-router.get('/:id/config', (req, res) => {
-  const config = db.prepare('SELECT * FROM profile_config WHERE profile_id = ?').get(req.params.id) as any;
+router.get('/:id/config', async (req, res) => {
+  const config = await db.prepare('SELECT * FROM profile_config WHERE profile_id = ?').get(req.params.id) as any;
   if (config && typeof config.widgets === 'string') {
     try { config.widgets = JSON.parse(config.widgets); } catch { config.widgets = []; }
   }
   res.json(config || {});
 });
 
-router.post('/', authMiddleware, (req: AuthRequest, res) => {
+router.post('/', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { username, display_name } = req.body;
     if (!username) return res.status(400).json({ error: 'Username required' });
 
-    const existing = db.prepare('SELECT id FROM profiles WHERE username = ?').get(username);
+    const existing = await db.prepare('SELECT id FROM profiles WHERE username = ?').get(username);
     if (existing) return res.status(400).json({ error: 'Username already taken' });
 
-    const existingProfile = db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId!);
+    const existingProfile = await db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId!);
     if (existingProfile) return res.status(400).json({ error: 'Profile already exists' });
 
     const id = uuid();
-    const isFirstUser = !(db.prepare('SELECT id FROM profiles LIMIT 1').get());
-    db.prepare('INSERT INTO profiles (id, user_id, username, display_name, is_admin) VALUES (?, ?, ?, ?, ?)').run(id, req.userId!, username, display_name || username, isFirstUser ? 1 : 0);
-    db.prepare('INSERT INTO profile_config (id, profile_id) VALUES (?, ?)').run(uuid(), id);
+    const isFirstUser = !(await db.prepare('SELECT id FROM profiles LIMIT 1').get());
+    await db.prepare('INSERT INTO profiles (id, user_id, username, display_name, is_admin) VALUES (?, ?, ?, ?, ?)').run(id, req.userId!, username, display_name || username, isFirstUser ? 1 : 0);
+    await db.prepare('INSERT INTO profile_config (id, profile_id) VALUES (?, ?)').run(uuid(), id);
 
-    const profile = db.prepare('SELECT * FROM profiles WHERE id = ?').get(id);
+    const profile = await db.prepare('SELECT * FROM profiles WHERE id = ?').get(id);
     res.json(profile);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.put('/', authMiddleware, (req: AuthRequest, res) => {
+router.put('/', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+    const profile = await db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId!) as any;
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
 
     const fields = ['display_name', 'bio', 'avatar_url', 'banner_url', 'username', 'is_active', 'location', 'is_private', 'passcode', 'custom_css', 'custom_html', 'custom_title', 'slug', 'custom_status', 'share_enabled'];
@@ -122,7 +122,7 @@ router.put('/', authMiddleware, (req: AuthRequest, res) => {
           if (slug.length < 3 || slug.length > 50) {
             return res.status(400).json({ error: 'Slug must be 3-50 characters, lowercase alphanumeric and hyphens only' });
           }
-          const existingSlug = db.prepare('SELECT id FROM profiles WHERE slug = ? AND id != ?').get(slug, profile.id);
+          const existingSlug = await db.prepare('SELECT id FROM profiles WHERE slug = ? AND id != ?').get(slug, profile.id);
           if (existingSlug) return res.status(400).json({ error: 'Slug already taken' });
           updates.push(`${f} = ?`);
           values.push(slug);
@@ -137,15 +137,15 @@ router.put('/', authMiddleware, (req: AuthRequest, res) => {
     }
 
     if (req.body.username && req.body.username !== profile.username) {
-      const usernameCheck = db.prepare('SELECT id FROM profiles WHERE username = ? AND id != ?').get(req.body.username, profile.id);
+      const usernameCheck = await db.prepare('SELECT id FROM profiles WHERE username = ? AND id != ?').get(req.body.username, profile.id);
       if (usernameCheck) return res.status(400).json({ error: 'Username already taken' });
 
-      db.prepare('INSERT INTO username_history (id, user_id, old_username, new_username) VALUES (?, ?, ?, ?)').run(
+      await db.prepare('INSERT INTO username_history (id, user_id, old_username, new_username) VALUES (?, ?, ?, ?)').run(
         uuid(), req.userId, profile.username, req.body.username
       );
 
       const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
-      db.prepare('INSERT INTO audit_logs (id, user_id, action, target_type, target_id, details, ip) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+      await db.prepare('INSERT INTO audit_logs (id, user_id, action, target_type, target_id, details, ip) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
         uuid(), req.userId, 'username_change', 'profile', profile.id,
         `Username changed from ${profile.username} to ${req.body.username}`, ip
       );
@@ -154,19 +154,19 @@ router.put('/', authMiddleware, (req: AuthRequest, res) => {
     if (updates.length > 0) {
       updates.push("updated_at = datetime('now')");
       values.push(profile.id);
-      db.prepare(`UPDATE profiles SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+      await db.prepare(`UPDATE profiles SET ${updates.join(', ')} WHERE id = ?`).run(...values);
     }
 
-    const updated = db.prepare('SELECT * FROM profiles WHERE id = ?').get(profile.id);
+    const updated = await db.prepare('SELECT * FROM profiles WHERE id = ?').get(profile.id);
     res.json(updated);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.put('/config', authMiddleware, (req: AuthRequest, res) => {
+router.put('/config', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+    const profile = await db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId!) as any;
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
 
     const booleanFields = new Set([
@@ -241,10 +241,10 @@ router.put('/config', authMiddleware, (req: AuthRequest, res) => {
     if (updates.length > 0) {
       updates.push("updated_at = datetime('now')");
       values.push(profile.id);
-      db.prepare(`UPDATE profile_config SET ${updates.join(', ')} WHERE profile_id = ?`).run(...values);
+      await db.prepare(`UPDATE profile_config SET ${updates.join(', ')} WHERE profile_id = ?`).run(...values);
     }
 
-    const config = db.prepare('SELECT * FROM profile_config WHERE profile_id = ?').get(profile.id);
+    const config = await db.prepare('SELECT * FROM profile_config WHERE profile_id = ?').get(profile.id);
     res.json(config);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -262,7 +262,7 @@ router.post('/:id/view', async (req, res) => {
 
     const today = new Date().toISOString().split('T')[0];
 
-    const existing = db.prepare(
+    const existing = await db.prepare(
       "SELECT id FROM analytics WHERE profile_id = ? AND event_type = 'view' AND visitor_ip = ? AND date(created_at) = ?"
     ).get(profileId, ip, today);
 
@@ -270,8 +270,8 @@ router.post('/:id/view', async (req, res) => {
       return res.json({ ok: true, counted: false });
     }
 
-    db.prepare('UPDATE profiles SET view_count = view_count + 1 WHERE id = ?').run(profileId);
-    db.prepare(`INSERT INTO daily_stats (id, profile_id, date, views, unique_visitors) VALUES (?, ?, ?, 1, 1)
+    await db.prepare('UPDATE profiles SET view_count = view_count + 1 WHERE id = ?').run(profileId);
+    await db.prepare(`INSERT INTO daily_stats (id, profile_id, date, views, unique_visitors) VALUES (?, ?, ?, 1, 1)
       ON CONFLICT(profile_id, date) DO UPDATE SET views = views + 1, unique_visitors = unique_visitors + 1`).run(uuid(), profileId, today);
 
     const userAgent = String(req.headers['user-agent'] || '');
@@ -291,7 +291,7 @@ router.post('/:id/view', async (req, res) => {
     } catch {}
 
     try {
-      db.prepare('INSERT INTO analytics (id, profile_id, event_type, visitor_ip, visitor_agent, referer, device_type, browser, os, screen_width, screen_height) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+      await db.prepare('INSERT INTO analytics (id, profile_id, event_type, visitor_ip, visitor_agent, referer, device_type, browser, os, screen_width, screen_height) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
         uuid(), profileId, 'view', ip, userAgent, req.headers['referer'] || '', deviceType, browser, os,
         parseInt(String(req.headers['x-screen-width'] || '0')) || 0,
         parseInt(String(req.headers['x-screen-height'] || '0')) || 0
@@ -304,31 +304,31 @@ router.post('/:id/view', async (req, res) => {
   }
 });
 
-router.get('/check/:username', (req, res) => {
+router.get('/check/:username', async (req, res) => {
   const excludeUserId = req.query.exclude as string;
   let existing;
   if (excludeUserId) {
-    existing = db.prepare('SELECT id FROM profiles WHERE username = ? AND user_id != ?').get(req.params.username, excludeUserId);
+    existing = await db.prepare('SELECT id FROM profiles WHERE username = ? AND user_id != ?').get(req.params.username, excludeUserId);
   } else {
-    existing = db.prepare('SELECT id FROM profiles WHERE username = ?').get(req.params.username);
+    existing = await db.prepare('SELECT id FROM profiles WHERE username = ?').get(req.params.username);
   }
   res.json({ available: !existing });
 });
 
-router.get('/check-slug/:slug', (req, res) => {
+router.get('/check-slug/:slug', async (req, res) => {
   const excludeId = req.query.exclude as string;
   let existing;
   if (excludeId) {
-    existing = db.prepare('SELECT id FROM profiles WHERE slug = ? AND id != ?').get(req.params.slug, excludeId);
+    existing = await db.prepare('SELECT id FROM profiles WHERE slug = ? AND id != ?').get(req.params.slug, excludeId);
   } else {
-    existing = db.prepare('SELECT id FROM profiles WHERE slug = ?').get(req.params.slug);
+    existing = await db.prepare('SELECT id FROM profiles WHERE slug = ?').get(req.params.slug);
   }
   res.json({ available: !existing });
 });
 
-router.get('/search/:query', (req, res) => {
+router.get('/search/:query', async (req, res) => {
   const query = req.params.query;
-  const profiles = db.prepare(`
+  const profiles = await db.prepare(`
     SELECT DISTINCT p.* FROM profiles p
     LEFT JOIN profile_tags pt ON p.id = pt.profile_id
     WHERE (p.username LIKE ? OR p.display_name LIKE ? OR pt.tag LIKE ?)
@@ -338,41 +338,41 @@ router.get('/search/:query', (req, res) => {
   res.json(profiles);
 });
 
-router.get('/:id/tags', (req, res) => {
+router.get('/:id/tags', async (req, res) => {
   try {
-    const tags = db.prepare('SELECT tag FROM profile_tags WHERE profile_id = ?').all(req.params.id) as any[];
+    const tags = await db.prepare('SELECT tag FROM profile_tags WHERE profile_id = ?').all(req.params.id) as any[];
     res.json(tags.map(t => t.tag));
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.get('/me/tags', authMiddleware, (req: AuthRequest, res) => {
+router.get('/me/tags', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const profile = db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+    const profile = await db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId!) as any;
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
-    const tags = db.prepare('SELECT tag FROM profile_tags WHERE profile_id = ?').all(profile.id) as any[];
+    const tags = await db.prepare('SELECT tag FROM profile_tags WHERE profile_id = ?').all(profile.id) as any[];
     res.json({ tags: tags.map((t: any) => t.tag) });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.put('/me/tags', authMiddleware, (req: AuthRequest, res) => {
+router.put('/me/tags', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const profile = db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+    const profile = await db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId!) as any;
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
 
     const { tags } = req.body;
     if (!Array.isArray(tags)) return res.status(400).json({ error: 'Tags must be an array' });
     const limitedTags = tags.slice(0, 10).map((t: string) => String(t).trim().toLowerCase()).filter(Boolean);
 
-    db.prepare('DELETE FROM profile_tags WHERE profile_id = ?').run(profile.id);
+    await db.prepare('DELETE FROM profile_tags WHERE profile_id = ?').run(profile.id);
     const insert = db.prepare('INSERT INTO profile_tags (id, profile_id, tag) VALUES (?, ?, ?)');
-    const insertAll = db.transaction((items: string[]) => {
-      for (const tag of items) insert.run(uuid(), profile.id, tag);
+    const insertAll = db.transaction(async (dbTx: any) => {
+      for (const tag of limitedTags) await insert.run(uuid(), profile.id, tag);
     });
-    insertAll(limitedTags);
+    await insertAll();
 
     res.json({ tags: limitedTags });
   } catch (err: any) {
@@ -380,9 +380,9 @@ router.put('/me/tags', authMiddleware, (req: AuthRequest, res) => {
   }
 });
 
-router.put('/:id/tags', authMiddleware, (req: AuthRequest, res) => {
+router.put('/:id/tags', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+    const profile = await db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId!) as any;
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
     if (profile.id !== req.params.id) return res.status(403).json({ error: 'Forbidden' });
 
@@ -390,12 +390,12 @@ router.put('/:id/tags', authMiddleware, (req: AuthRequest, res) => {
     if (!Array.isArray(tags)) return res.status(400).json({ error: 'Tags must be an array' });
     const limitedTags = tags.slice(0, 10).map((t: string) => String(t).trim().toLowerCase()).filter(Boolean);
 
-    db.prepare('DELETE FROM profile_tags WHERE profile_id = ?').run(profile.id);
+    await db.prepare('DELETE FROM profile_tags WHERE profile_id = ?').run(profile.id);
     const insert = db.prepare('INSERT INTO profile_tags (id, profile_id, tag) VALUES (?, ?, ?)');
-    const insertAll = db.transaction((items: string[]) => {
-      for (const tag of items) insert.run(uuid(), profile.id, tag);
+    const insertAll = db.transaction(async (dbTx: any) => {
+      for (const tag of limitedTags) await insert.run(uuid(), profile.id, tag);
     });
-    insertAll(limitedTags);
+    await insertAll();
 
     res.json({ tags: limitedTags });
   } catch (err: any) {
@@ -403,22 +403,22 @@ router.put('/:id/tags', authMiddleware, (req: AuthRequest, res) => {
   }
 });
 
-router.post('/deactivate', authMiddleware, (req: AuthRequest, res) => {
+router.post('/deactivate', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+    const profile = await db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId!) as any;
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
-    db.prepare('UPDATE profiles SET is_deactivated = 1 WHERE id = ?').run(profile.id);
+    await db.prepare('UPDATE profiles SET is_deactivated = 1 WHERE id = ?').run(profile.id);
     res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.post('/reactivate', authMiddleware, (req: AuthRequest, res) => {
+router.post('/reactivate', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+    const profile = await db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId!) as any;
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
-    db.prepare('UPDATE profiles SET is_deactivated = 0 WHERE id = ?').run(profile.id);
+    await db.prepare('UPDATE profiles SET is_deactivated = 0 WHERE id = ?').run(profile.id);
     res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -427,7 +427,7 @@ router.post('/reactivate', authMiddleware, (req: AuthRequest, res) => {
 
 router.get('/:id/qr', async (req, res) => {
   try {
-    const profile = db.prepare('SELECT * FROM profiles WHERE id = ?').get(req.params.id) as any;
+    const profile = await db.prepare('SELECT * FROM profiles WHERE id = ?').get(req.params.id) as any;
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
 
     const url = profile.slug
@@ -449,21 +449,21 @@ router.get('/:id/qr', async (req, res) => {
   }
 });
 
-router.get('/admin/all', authMiddleware, (req: AuthRequest, res) => {
-  const admin = db.prepare('SELECT is_admin FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+router.get('/admin/all', authMiddleware, async (req: AuthRequest, res) => {
+  const admin = await db.prepare('SELECT is_admin FROM profiles WHERE user_id = ?').get(req.userId!) as any;
   if (!admin?.is_admin) return res.status(403).json({ error: 'Forbidden' });
-  const profiles = db.prepare('SELECT * FROM profiles ORDER BY created_at DESC LIMIT 100').all();
+  const profiles = await db.prepare('SELECT * FROM profiles ORDER BY created_at DESC LIMIT 100').all();
   res.json(profiles);
 });
 
-router.put('/admin/:userId/ban', authMiddleware, (req: AuthRequest, res) => {
-  const admin = db.prepare('SELECT is_admin FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+router.put('/admin/:userId/ban', authMiddleware, async (req: AuthRequest, res) => {
+  const admin = await db.prepare('SELECT is_admin FROM profiles WHERE user_id = ?').get(req.userId!) as any;
   if (!admin?.is_admin) return res.status(403).json({ error: 'Forbidden' });
   const { active } = req.body;
-  db.prepare('UPDATE profiles SET is_active = ? WHERE user_id = ?').run(active ? 1 : 0, req.params.userId);
+  await db.prepare('UPDATE profiles SET is_active = ? WHERE user_id = ?').run(active ? 1 : 0, req.params.userId);
 
   const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
-  db.prepare('INSERT INTO audit_logs (id, user_id, action, target_type, target_id, details, ip) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+  await db.prepare('INSERT INTO audit_logs (id, user_id, action, target_type, target_id, details, ip) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
     uuid(), req.userId, active ? 'user_unbanned' : 'user_banned', 'user', req.params.userId,
     `User ${active ? 'unbanned' : 'banned'}`, ip
   );
@@ -471,28 +471,28 @@ router.put('/admin/:userId/ban', authMiddleware, (req: AuthRequest, res) => {
   res.json({ ok: true });
 });
 
-router.put('/admin/:userId/admin', authMiddleware, (req: AuthRequest, res) => {
-  const admin = db.prepare('SELECT is_admin FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+router.put('/admin/:userId/admin', authMiddleware, async (req: AuthRequest, res) => {
+  const admin = await db.prepare('SELECT is_admin FROM profiles WHERE user_id = ?').get(req.userId!) as any;
   if (!admin?.is_admin) return res.status(403).json({ error: 'Forbidden' });
   const { isAdmin } = req.body;
-  db.prepare('UPDATE profiles SET is_admin = ? WHERE user_id = ?').run(isAdmin ? 1 : 0, req.params.userId);
+  await db.prepare('UPDATE profiles SET is_admin = ? WHERE user_id = ?').run(isAdmin ? 1 : 0, req.params.userId);
   res.json({ ok: true });
 });
 
-router.delete('/me', authMiddleware, (req: AuthRequest, res) => {
+router.delete('/me', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+    const profile = await db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId!) as any;
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
 
-    db.prepare('DELETE FROM links WHERE profile_id = ?').run(profile.id);
-    db.prepare('DELETE FROM social_links WHERE profile_id = ?').run(profile.id);
-    db.prepare('DELETE FROM user_badges WHERE profile_id = ?').run(profile.id);
-    db.prepare('DELETE FROM profile_tags WHERE profile_id = ?').run(profile.id);
-    db.prepare('DELETE FROM profile_config WHERE profile_id = ?').run(profile.id);
-    db.prepare('UPDATE profiles SET is_active = 0, is_deactivated = 1 WHERE id = ?').run(profile.id);
+    await db.prepare('DELETE FROM links WHERE profile_id = ?').run(profile.id);
+    await db.prepare('DELETE FROM social_links WHERE profile_id = ?').run(profile.id);
+    await db.prepare('DELETE FROM user_badges WHERE profile_id = ?').run(profile.id);
+    await db.prepare('DELETE FROM profile_tags WHERE profile_id = ?').run(profile.id);
+    await db.prepare('DELETE FROM profile_config WHERE profile_id = ?').run(profile.id);
+    await db.prepare('UPDATE profiles SET is_active = 0, is_deactivated = 1 WHERE id = ?').run(profile.id);
 
     const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
-    db.prepare('INSERT INTO audit_logs (id, user_id, action, target_type, target_id, details, ip) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+    await db.prepare('INSERT INTO audit_logs (id, user_id, action, target_type, target_id, details, ip) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
       uuid(), req.userId, 'profile_deleted', 'profile', profile.id, 'Profile soft-deleted by user', ip
     );
 

@@ -120,14 +120,14 @@ app.use((req: any, _res, next) => {
 app.use(bruteForceProtection);
 app.use(antiSpam);
 
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   if (req.path.startsWith('/api/auth') || req.path.startsWith('/api/public')) return next();
   try {
-    const setting = db.prepare("SELECT value FROM system_settings WHERE key = 'maintenance_mode'").get() as any;
+    const setting = await db.prepare("SELECT value FROM system_settings WHERE key = 'maintenance_mode'").get() as any;
     if (setting?.value === '1') {
       const userId = (req as any).userId;
       if (userId) {
-        const admin = db.prepare('SELECT is_admin FROM profiles WHERE user_id = ?').get(userId) as any;
+        const admin = await db.prepare('SELECT is_admin FROM profiles WHERE user_id = ?').get(userId) as any;
         if (admin?.is_admin) return next();
       }
       return res.status(503).json({ error: 'System is under maintenance. Please try again later.' });
@@ -189,9 +189,9 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.get('/sitemap.xml', (_req, res) => {
+app.get('/sitemap.xml', async (_req, res) => {
   res.setHeader('Content-Type', 'application/xml');
-  const profiles = db.prepare('SELECT username, updated_at FROM profiles WHERE is_active = 1 ORDER BY updated_at DESC').all() as any[];
+  const profiles = await db.prepare('SELECT username, updated_at FROM profiles WHERE is_active = 1 ORDER BY updated_at DESC').all() as any[];
   let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
   xml += '  <url><loc>https://kio.lol/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>\n';
   for (const p of profiles) {

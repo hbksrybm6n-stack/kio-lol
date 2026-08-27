@@ -93,20 +93,20 @@ You can control cookie preferences through your browser settings.`,
   },
 };
 
-function ensureDefaultPages() {
+async function ensureDefaultPages() {
   for (const [slug, page] of Object.entries(defaultPages)) {
-    const existing = db.prepare('SELECT slug FROM legal_pages WHERE slug = ?').get(slug);
+    const existing = await db.prepare('SELECT slug FROM legal_pages WHERE slug = ?').get(slug);
     if (!existing) {
-      db.prepare('INSERT INTO legal_pages (slug, title, content) VALUES (?, ?, ?)').run(slug, page.title, page.content);
+      await db.prepare('INSERT INTO legal_pages (slug, title, content) VALUES (?, ?, ?)').run(slug, page.title, page.content);
     }
   }
 }
 
-ensureDefaultPages();
+await ensureDefaultPages();
 
-router.get('/:slug', (req, res) => {
+router.get('/:slug', async (req, res) => {
   try {
-    const page = db.prepare('SELECT * FROM legal_pages WHERE slug = ?').get(req.params.slug) as any;
+    const page = await db.prepare('SELECT * FROM legal_pages WHERE slug = ?').get(req.params.slug) as any;
     if (!page) return res.status(404).json({ error: 'Page not found' });
     res.json(page);
   } catch (err: any) {
@@ -114,22 +114,22 @@ router.get('/:slug', (req, res) => {
   }
 });
 
-router.put('/:slug', authMiddleware, (req: AuthRequest, res) => {
+router.put('/:slug', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const admin = db.prepare('SELECT is_admin FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+    const admin = await db.prepare('SELECT is_admin FROM profiles WHERE user_id = ?').get(req.userId!) as any;
     if (!admin?.is_admin) return res.status(403).json({ error: 'Forbidden' });
 
     const { title, content } = req.body;
     if (!title || !content) return res.status(400).json({ error: 'Title and content required' });
 
-    const existing = db.prepare('SELECT slug FROM legal_pages WHERE slug = ?').get(req.params.slug);
+    const existing = await db.prepare('SELECT slug FROM legal_pages WHERE slug = ?').get(req.params.slug);
     if (existing) {
-      db.prepare("UPDATE legal_pages SET title = ?, content = ?, updated_at = datetime('now') WHERE slug = ?").run(title, content, req.params.slug);
+      await db.prepare("UPDATE legal_pages SET title = ?, content = ?, updated_at = datetime('now') WHERE slug = ?").run(title, content, req.params.slug);
     } else {
-      db.prepare('INSERT INTO legal_pages (slug, title, content) VALUES (?, ?, ?)').run(req.params.slug, title, content);
+      await db.prepare('INSERT INTO legal_pages (slug, title, content) VALUES (?, ?, ?)').run(req.params.slug, title, content);
     }
 
-    const page = db.prepare('SELECT * FROM legal_pages WHERE slug = ?').get(req.params.slug);
+    const page = await db.prepare('SELECT * FROM legal_pages WHERE slug = ?').get(req.params.slug);
     res.json(page);
   } catch (err: any) {
     res.status(500).json({ error: err.message });

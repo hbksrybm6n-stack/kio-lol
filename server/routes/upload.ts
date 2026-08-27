@@ -105,7 +105,7 @@ router.post('/', authMiddleware, upload.single('file'), async (req: AuthRequest,
   res.json({ url, thumbUrl, size: req.file.size, type: fieldname });
 });
 
-router.delete('/:filename', authMiddleware, (req: AuthRequest, res) => {
+router.delete('/:filename', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { filename } = req.params;
     const type = req.query.type as string || 'links';
@@ -116,12 +116,12 @@ router.delete('/:filename', authMiddleware, (req: AuthRequest, res) => {
     if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
 
     const url = `/uploads/${type}/${filename}`;
-    const profile = db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+    const profile = await db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId!) as any;
     if (profile) {
       const isOwner =
-        db.prepare('SELECT id FROM profiles WHERE user_id = ? AND avatar_url = ?').get(req.userId!, url) ||
-        db.prepare('SELECT id FROM profiles WHERE user_id = ? AND banner_url = ?').get(req.userId!, url) ||
-        db.prepare('SELECT id FROM links WHERE profile_id = ? AND (url = ? OR thumbnail_url = ?)').get(profile.id, url, url);
+        await db.prepare('SELECT id FROM profiles WHERE user_id = ? AND avatar_url = ?').get(req.userId!, url) ||
+        await db.prepare('SELECT id FROM profiles WHERE user_id = ? AND banner_url = ?').get(req.userId!, url) ||
+        await db.prepare('SELECT id FROM links WHERE profile_id = ? AND (url = ? OR thumbnail_url = ?)').get(profile.id, url, url);
       if (!isOwner && type !== 'links') {
         return res.status(403).json({ error: 'You can only delete your own files' });
       }

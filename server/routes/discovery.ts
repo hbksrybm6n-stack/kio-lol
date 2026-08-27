@@ -4,9 +4,9 @@ import { optionalAuth, type AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
-router.get('/trending', (_req, res) => {
+router.get('/trending', async (_req, res) => {
   try {
-    const profiles = db.prepare(`
+    const profiles = await db.prepare(`
       SELECT p.id, p.username, p.display_name, p.avatar_url, p.banner_url, p.view_count, p.bio, p.created_at,
         (SELECT COUNT(*) FROM links WHERE profile_id = p.id AND is_active = 1) as link_count,
         (SELECT COUNT(*) FROM user_badges WHERE profile_id = p.id) as badge_count
@@ -21,9 +21,9 @@ router.get('/trending', (_req, res) => {
   }
 });
 
-router.get('/featured', (_req, res) => {
+router.get('/featured', async (_req, res) => {
   try {
-    const profiles = db.prepare(`
+    const profiles = await db.prepare(`
       SELECT p.id, p.username, p.display_name, p.avatar_url, p.banner_url, p.view_count, p.bio, p.created_at,
         (SELECT COUNT(*) FROM links WHERE profile_id = p.id AND is_active = 1) as link_count
       FROM profiles p
@@ -37,9 +37,9 @@ router.get('/featured', (_req, res) => {
   }
 });
 
-router.get('/recent', (_req, res) => {
+router.get('/recent', async (_req, res) => {
   try {
-    const profiles = db.prepare(`
+    const profiles = await db.prepare(`
       SELECT p.id, p.username, p.display_name, p.avatar_url, p.banner_url, p.view_count, p.bio, p.created_at,
         (SELECT COUNT(*) FROM links WHERE profile_id = p.id AND is_active = 1) as link_count
       FROM profiles p
@@ -53,7 +53,7 @@ router.get('/recent', (_req, res) => {
   }
 });
 
-router.get('/directory', (req, res) => {
+router.get('/directory', async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.min(50, parseInt(req.query.limit as string) || 20);
@@ -73,9 +73,9 @@ router.get('/directory', (req, res) => {
       params.push(`%${search}%`, `%${search}%`);
     }
 
-    const total = db.prepare(`SELECT COUNT(*) as count FROM profiles p WHERE ${where}`).get(...params) as any;
+    const total = await db.prepare(`SELECT COUNT(*) as count FROM profiles p WHERE ${where}`).get(...params) as any;
 
-    const profiles = db.prepare(`
+    const profiles = await db.prepare(`
       SELECT p.id, p.username, p.display_name, p.avatar_url, p.banner_url, p.view_count, p.bio, p.created_at,
         (SELECT COUNT(*) FROM links WHERE profile_id = p.id AND is_active = 1) as link_count
       FROM profiles p
@@ -98,12 +98,12 @@ router.get('/directory', (req, res) => {
   }
 });
 
-router.get('/search', (req, res) => {
+router.get('/search', async (req, res) => {
   try {
     const query = (req.query.q as string) || '';
     if (!query) return res.json([]);
 
-    const profiles = db.prepare(`
+    const profiles = await db.prepare(`
       SELECT p.id, p.username, p.display_name, p.avatar_url, p.view_count, p.bio
       FROM profiles p
       WHERE p.is_active = 1 AND (p.username LIKE ? OR p.display_name LIKE ?)

@@ -5,69 +5,69 @@ import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
-router.get('/', authMiddleware, (req: AuthRequest, res) => {
-  const profile = db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+router.get('/', authMiddleware, async (req: AuthRequest, res) => {
+  const profile = await db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId!) as any;
   if (!profile) return res.json([]);
-  const mine = db.prepare('SELECT * FROM templates WHERE creator_id = ? ORDER BY created_at DESC').all(profile.id);
-  const pub = db.prepare('SELECT * FROM templates WHERE is_public = 1 AND creator_id != ? ORDER BY uses_count DESC LIMIT 20').all(profile.id);
+  const mine = await db.prepare('SELECT * FROM templates WHERE creator_id = ? ORDER BY created_at DESC').all(profile.id);
+  const pub = await db.prepare('SELECT * FROM templates WHERE is_public = 1 AND creator_id != ? ORDER BY uses_count DESC LIMIT 20').all(profile.id);
   res.json([...mine, ...pub]);
 });
 
-router.get('/public', (req, res) => {
+router.get('/public', async (req, res) => {
   const limit = parseInt(req.query.limit as string) || 20;
-  res.json(db.prepare('SELECT * FROM templates WHERE is_public = 1 ORDER BY uses_count DESC LIMIT ?').all(limit));
+  res.json(await db.prepare('SELECT * FROM templates WHERE is_public = 1 ORDER BY uses_count DESC LIMIT ?').all(limit));
 });
 
-router.get('/mine', authMiddleware, (req: AuthRequest, res) => {
-  const profile = db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+router.get('/mine', authMiddleware, async (req: AuthRequest, res) => {
+  const profile = await db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId!) as any;
   if (!profile) return res.json([]);
-  res.json(db.prepare('SELECT * FROM templates WHERE creator_id = ? ORDER BY created_at DESC').all(profile.id));
+  res.json(await db.prepare('SELECT * FROM templates WHERE creator_id = ? ORDER BY created_at DESC').all(profile.id));
 });
 
-router.get('/:id', (req, res) => {
-  const template = db.prepare('SELECT * FROM templates WHERE id = ?').get(req.params.id);
+router.get('/:id', async (req, res) => {
+  const template = await db.prepare('SELECT * FROM templates WHERE id = ?').get(req.params.id);
   if (!template) return res.status(404).json({ error: 'Not found' });
   res.json(template);
 });
 
-router.post('/', authMiddleware, (req: AuthRequest, res) => {
-  const profile = db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+router.post('/', authMiddleware, async (req: AuthRequest, res) => {
+  const profile = await db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId!) as any;
   if (!profile) return res.status(404).json({ error: 'Profile not found' });
   const { name, description, config, is_public } = req.body;
   if (!name) return res.status(400).json({ error: 'Name required' });
   const id = uuid();
-  db.prepare('INSERT INTO templates (id, creator_id, name, description, config, is_public, share_id) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+  await db.prepare('INSERT INTO templates (id, creator_id, name, description, config, is_public, share_id) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
     id, profile.id, name, description || '', JSON.stringify(config || {}), is_public ? 1 : 0, uuid().slice(0, 8)
   );
-  res.json(db.prepare('SELECT * FROM templates WHERE id = ?').get(id));
+  res.json(await db.prepare('SELECT * FROM templates WHERE id = ?').get(id));
 });
 
-router.put('/:id', authMiddleware, (req: AuthRequest, res) => {
-  const profile = db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+router.put('/:id', authMiddleware, async (req: AuthRequest, res) => {
+  const profile = await db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId!) as any;
   if (!profile) return res.status(404).json({ error: 'Profile not found' });
-  const template = db.prepare('SELECT * FROM templates WHERE id = ? AND creator_id = ?').get(req.params.id, profile.id);
+  const template = await db.prepare('SELECT * FROM templates WHERE id = ? AND creator_id = ?').get(req.params.id, profile.id);
   if (!template) return res.status(404).json({ error: 'Not found' });
   const { name, description, is_public } = req.body;
-  if (name !== undefined) db.prepare('UPDATE templates SET name = ? WHERE id = ?').run(name, req.params.id);
-  if (description !== undefined) db.prepare('UPDATE templates SET description = ? WHERE id = ?').run(description, req.params.id);
-  if (is_public !== undefined) db.prepare('UPDATE templates SET is_public = ? WHERE id = ?').run(is_public ? 1 : 0, req.params.id);
-  res.json(db.prepare('SELECT * FROM templates WHERE id = ?').get(req.params.id));
+  if (name !== undefined) await db.prepare('UPDATE templates SET name = ? WHERE id = ?').run(name, req.params.id);
+  if (description !== undefined) await db.prepare('UPDATE templates SET description = ? WHERE id = ?').run(description, req.params.id);
+  if (is_public !== undefined) await db.prepare('UPDATE templates SET is_public = ? WHERE id = ?').run(is_public ? 1 : 0, req.params.id);
+  res.json(await db.prepare('SELECT * FROM templates WHERE id = ?').get(req.params.id));
 });
 
-router.delete('/:id', authMiddleware, (req: AuthRequest, res) => {
-  const profile = db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId!) as any;
-  db.prepare('DELETE FROM templates WHERE id = ? AND creator_id = ?').run(req.params.id, profile?.id);
+router.delete('/:id', authMiddleware, async (req: AuthRequest, res) => {
+  const profile = await db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+  await db.prepare('DELETE FROM templates WHERE id = ? AND creator_id = ?').run(req.params.id, profile?.id);
   res.json({ ok: true });
 });
 
-router.post('/:id/apply', authMiddleware, (req: AuthRequest, res) => {
+router.post('/:id/apply', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const profile = db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId!) as any;
+    const profile = await db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId!) as any;
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
-    const template = db.prepare('SELECT * FROM templates WHERE id = ?').get(req.params.id) as any;
+    const template = await db.prepare('SELECT * FROM templates WHERE id = ?').get(req.params.id) as any;
     if (!template) return res.status(404).json({ error: 'Template not found' });
 
-    db.prepare('UPDATE templates SET uses_count = uses_count + 1 WHERE id = ?').run(req.params.id);
+    await db.prepare('UPDATE templates SET uses_count = uses_count + 1 WHERE id = ?').run(req.params.id);
 
     const config = JSON.parse(template.config || '{}');
     const allowedFields = [
@@ -103,18 +103,18 @@ router.post('/:id/apply', authMiddleware, (req: AuthRequest, res) => {
     if (updates.length > 0) {
       updates.push("updated_at = datetime('now')");
       values.push(profile.id);
-      db.prepare(`UPDATE profile_config SET ${updates.join(', ')} WHERE profile_id = ?`).run(...values);
+      await db.prepare(`UPDATE profile_config SET ${updates.join(', ')} WHERE profile_id = ?`).run(...values);
     }
 
-    const saved = db.prepare('SELECT * FROM profile_config WHERE profile_id = ?').get(profile.id);
+    const saved = await db.prepare('SELECT * FROM profile_config WHERE profile_id = ?').get(profile.id);
     res.json(saved);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.post('/:id/use', (req, res) => {
-  db.prepare('UPDATE templates SET uses_count = uses_count + 1 WHERE id = ?').run(req.params.id);
+router.post('/:id/use', async (req, res) => {
+  await db.prepare('UPDATE templates SET uses_count = uses_count + 1 WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });
 
