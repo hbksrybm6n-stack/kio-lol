@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Eye, Link2, Award, Sparkles, Palette, BarChart3, Shield, Globe, Zap, ChevronDown, Check, Crown, Infinity, Headphones, MousePointer2 } from "lucide-react";
+import { assetUrl } from "@/lib/utils";
 
 interface Leader {
   id: string;
@@ -359,7 +360,7 @@ export default function LandingPage() {
                     {i + 1}
                   </span>
                   {l.avatar_url ? (
-                    <img src={l.avatar_url} alt="" className="w-10 h-10 rounded-xl object-cover shrink-0" />
+                    <img src={assetUrl(l.avatar_url)} alt="" className="w-10 h-10 rounded-xl object-cover shrink-0" />
                   ) : (
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center shrink-0 border border-white/[0.04]">
                       <span className="text-[14px] font-bold text-violet-400">{(l.display_name || l.username)[0]?.toUpperCase()}</span>

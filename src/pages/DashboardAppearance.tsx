@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Save, Upload, X, Check } from "lucide-react";
 import { configApi, uploadApi, profileApi } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
-import { cn } from "@/lib/utils";
+import { cn, assetUrl } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 const FONT_OPTIONS = ["Inter", "Space Grotesk", "JetBrains Mono", "Poppins", "Montserrat"];
@@ -301,7 +301,7 @@ export default function DashboardAppearance() {
                 <label className="text-[11px] font-semibold text-[#71717a] uppercase tracking-wider w-full">Avatar</label>
                 <div className="relative h-24 w-24 rounded-full bg-white/[0.06] overflow-hidden border-2 border-white/[0.06]">
                   {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                    <img src={assetUrl(profile.avatar_url)} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <div className="h-full w-full flex items-center justify-center text-2xl font-bold text-[#3f3f46]">
                       {(profile?.display_name ?? profile?.username ?? "?")[0].toUpperCase()}
@@ -340,7 +340,7 @@ export default function DashboardAppearance() {
                 <label className="text-[11px] font-semibold text-[#71717a] uppercase tracking-wider">Banner</label>
                 <div className="h-28 rounded-xl bg-white/[0.04] overflow-hidden border border-white/[0.06] relative">
                   {profile?.banner_url ? (
-                    <img src={profile.banner_url} alt="" className="h-full w-full object-cover" />
+                    <img src={assetUrl(profile.banner_url)} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <div className="h-full flex items-center justify-center text-[12px] text-[#3f3f46]">No banner</div>
                   )}
@@ -641,7 +641,7 @@ export default function DashboardAppearance() {
                     style={{ borderColor: `${primaryColor}60` }}
                   >
                     {profile?.avatar_url ? (
-                      <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                      <img src={assetUrl(profile.avatar_url)} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <div
                         className="w-full h-full flex items-center justify-center text-2xl font-bold bg-white/[0.06]"

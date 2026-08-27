@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { configApi, uploadApi } from "@/lib/api";
 import { Save, Upload, X, Image, Plus, Trash2, Star, StarOff, RotateCw } from "lucide-react";
 import toast from "react-hot-toast";
+import { assetUrl } from "@/lib/utils";
 
 interface BgItem {
   id: string;
@@ -190,9 +191,9 @@ export default function DashboardBackground() {
                 {backgrounds.map((bg) => (
                   <div key={bg.id} className={`relative rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${bg.is_active ? "border-violet-400/60" : "border-white/[0.06] hover:border-white/[0.12]"}`} onClick={() => handleSetActive(bg)}>
                     {bg.type === "video" ? (
-                      <video src={bg.url} className="w-full h-28 object-cover" muted />
+                      <video src={assetUrl(bg.url)} className="w-full h-28 object-cover" muted />
                     ) : (
-                      <img src={bg.url} alt="" className="w-full h-28 object-cover" />
+                      <img src={assetUrl(bg.url)} alt="" className="w-full h-28 object-cover" />
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                     <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
@@ -281,9 +282,9 @@ export default function DashboardBackground() {
             <div className="relative w-full aspect-[3/4] rounded-lg overflow-hidden bg-[#050505]">
               {activeBg ? (
                 isVideo ? (
-                  <video src={activeBg} className="w-full h-full object-cover" style={{ filter: filterStyle }} autoPlay loop muted />
+                  <video src={assetUrl(activeBg)} className="w-full h-full object-cover" style={{ filter: filterStyle }} autoPlay loop muted />
                 ) : (
-                  <img src={activeBg} alt="" className="w-full h-full object-cover" style={{ filter: filterStyle }} />
+                  <img src={assetUrl(activeBg)} alt="" className="w-full h-full object-cover" style={{ filter: filterStyle }} />
                 )
               ) : (
                 <div className="w-full h-full flex items-center justify-center">

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Search, Eye, Link2, Ghost, ChevronLeft, ChevronRight } from "lucide-react";
 import { discoveryApi } from "@/lib/api";
-import { formatNumber } from "@/lib/utils";
+import { formatNumber, assetUrl } from "@/lib/utils";
 
 interface DiscoveryProfile {
   id: string;
@@ -52,7 +52,7 @@ function ProfileCard({ profile, delay }: { profile: DiscoveryProfile; delay: num
         <div className="flex items-center gap-3">
           {profile.avatar_url ? (
             <img
-              src={profile.avatar_url}
+              src={assetUrl(profile.avatar_url)}
               alt=""
               className="w-11 h-11 rounded-full object-cover"
             />

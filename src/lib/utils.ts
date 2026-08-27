@@ -1,3 +1,12 @@
+const ASSET_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+
+export function assetUrl(url?: string | null): string {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  if (url.startsWith('/uploads/')) return `${ASSET_BASE}${url}`;
+  return url;
+}
+
 export function cn(...inputs: (string | Record<string, boolean> | undefined | null | false)[]) {
   const classes: string[] = [];
   for (const input of inputs) {

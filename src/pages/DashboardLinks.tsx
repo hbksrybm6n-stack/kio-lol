@@ -19,7 +19,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { Switch } from "@/components/ui/Switch";
 import { linksApi, linkGroupsApi } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, assetUrl } from "@/lib/utils";
 import toast from "react-hot-toast";
 import type { LinkGroup } from "@/types";
 
@@ -557,7 +557,7 @@ export default function DashboardLinks() {
                   }}
                 >
                   {link.thumbnail_url ? (
-                    <img src={link.thumbnail_url} alt="" className="w-9 h-9 rounded-lg object-cover" />
+                    <img src={assetUrl(link.thumbnail_url)} alt="" className="w-9 h-9 rounded-lg object-cover" />
                   ) : (
                     link.icon || "🔗"
                   )}

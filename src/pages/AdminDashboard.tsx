@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { profileApi, badgesApi, reportsApi, adminExtendedApi, premiumApi } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, assetUrl } from "@/lib/utils";
 import type { AuditLog, Announcement, StaffNote, Badge as BadgeType, PremiumPlan } from "@/types";
 
 interface UserProfile {
@@ -511,7 +511,7 @@ export default function AdminDashboard() {
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       {user.avatar_url ? (
-                        <img src={user.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                        <img src={assetUrl(user.avatar_url)} alt="" className="w-8 h-8 rounded-full object-cover" />
                       ) : (
                         <div className="w-8 h-8 rounded-full bg-white/[0.06] flex items-center justify-center text-[11px] font-bold text-[#52525b]">
                           {(user.display_name || user.username || "?")[0].toUpperCase()}
@@ -688,7 +688,7 @@ export default function AdminDashboard() {
                           className="w-full rounded-xl border border-white/[0.04] bg-[#0a0a0a] px-4 py-3 flex items-center gap-3 hover:border-white/[0.08] hover:bg-white/[0.01] transition-all cursor-pointer text-left"
                         >
                           {user.avatar_url ? (
-                            <img src={user.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                            <img src={assetUrl(user.avatar_url)} alt="" className="w-8 h-8 rounded-full object-cover" />
                           ) : (
                             <div className="w-8 h-8 rounded-full bg-white/[0.06] flex items-center justify-center text-[11px] font-bold text-[#52525b]">
                               {(user.display_name || user.username || "?")[0].toUpperCase()}
@@ -1217,7 +1217,7 @@ export default function AdminDashboard() {
                           className="w-full rounded-xl border border-white/[0.04] bg-[#0a0a0a] px-4 py-3 flex items-center gap-3 hover:border-white/[0.08] transition-all cursor-pointer text-left"
                         >
                           {user.avatar_url ? (
-                            <img src={user.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                            <img src={assetUrl(user.avatar_url)} alt="" className="w-8 h-8 rounded-full object-cover" />
                           ) : (
                             <div className="w-8 h-8 rounded-full bg-white/[0.06] flex items-center justify-center text-[11px] font-bold text-[#52525b]">
                               {(user.display_name || user.username || "?")[0].toUpperCase()}

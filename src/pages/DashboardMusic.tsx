@@ -3,7 +3,7 @@ import { configApi, uploadApi } from "@/lib/api";
 import { Save, Music, Play, Pause, Upload, X, Plus, GripVertical, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/Switch";
 import toast from "react-hot-toast";
-import { cn } from "@/lib/utils";
+import { cn, assetUrl } from "@/lib/utils";
 
 interface PlaylistSong {
   url: string;
@@ -431,7 +431,7 @@ export default function DashboardMusic() {
 
               {currentSong?.url && (
                 <>
-                  <audio ref={audioRef} src={currentSong.url} loop={loop} onEnded={() => setIsPlaying(false)} />
+                  <audio ref={audioRef} src={assetUrl(currentSong.url)} loop={loop} onEnded={() => setIsPlaying(false)} />
                   <div className="flex items-center gap-4 mt-4">
                     <button
                       onClick={togglePlayback}

@@ -20,7 +20,7 @@ import { ParticleEffect } from "@/components/effects/ParticleEffect";
 import AudioVisualizer from "@/components/AudioVisualizer";
 import ShareModal from "@/components/ShareModal";
 import Captcha from "@/components/Captcha";
-import { cn } from "@/lib/utils";
+import { cn, assetUrl } from "@/lib/utils";
 import toast from "react-hot-toast";
 import type { LinkGroup } from "@/types";
 
@@ -242,7 +242,7 @@ export default function ProfilePage() {
         };
       case "image":
         return {
-          backgroundImage: `url(${config.background_url})`,
+          backgroundImage: `url(${assetUrl(config.background_url)})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
         };
@@ -416,7 +416,7 @@ export default function ProfilePage() {
 
       {bgType === "video" && config?.background_video_url && (
         <video
-          src={config.background_video_url}
+          src={assetUrl(config.background_video_url)}
           className="absolute inset-0 w-full h-full object-cover"
           autoPlay
           loop
@@ -432,7 +432,7 @@ export default function ProfilePage() {
         <div
           className="absolute inset-0 w-full h-full"
           style={{
-            backgroundImage: `url(${config.background_url})`,
+            backgroundImage: `url(${assetUrl(config.background_url)})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
             filter: config.background_blur ? `blur(${config.background_blur}px)` : undefined,
@@ -572,7 +572,7 @@ export default function ProfilePage() {
                   style={{ maxWidth: cardWidth }}
                 >
                   <img
-                    src={profile.banner_url}
+                    src={assetUrl(profile.banner_url)}
                     alt=""
                     className="w-full h-[120px] sm:h-[160px] object-cover"
                   />
@@ -595,7 +595,7 @@ export default function ProfilePage() {
                       }}
                     />
                     <img
-                      src={profile.avatar_url}
+                      src={assetUrl(profile.avatar_url)}
                       alt=""
                       className="relative w-[100px] h-[100px] rounded-full object-cover border-[3px] border-[#050505]"
                       style={{ boxShadow: "0 0 60px rgba(0,0,0,0.5)" }}
@@ -1089,7 +1089,7 @@ function LinkComponent({
           )}
           {link.thumbnail_url ? (
             <img
-              src={link.thumbnail_url}
+              src={assetUrl(link.thumbnail_url)}
               alt=""
               className="w-6 h-6 rounded-lg object-cover shrink-0"
             />

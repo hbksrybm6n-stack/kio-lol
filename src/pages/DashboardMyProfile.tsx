@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { linksApi, socialLinksApi, badgesApi, configApi } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
-import { cn } from "@/lib/utils";
+import { cn, assetUrl } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 interface CompletionItem {
@@ -182,12 +182,12 @@ export default function DashboardMyProfile() {
         <div className="space-y-4">
           <div className="rounded-xl border border-white/[0.04] bg-[#0a0a0a] overflow-hidden">
             <div className="h-20 bg-gradient-to-r from-violet-500/30 to-fuchsia-500/30 relative">
-              {profile?.banner_url && <img src={profile.banner_url} alt="" className="w-full h-full object-cover" />}
+              {profile?.banner_url && <img src={assetUrl(profile.banner_url)} alt="" className="w-full h-full object-cover" />}
             </div>
             <div className="px-5 pb-5 -mt-8 relative">
               <div className="w-16 h-16 rounded-full border-4 border-[#0a0a0a] overflow-hidden bg-white/[0.06] mx-auto">
                 {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                  <img src={assetUrl(profile.avatar_url)} alt="" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-lg font-bold text-[#52525b]">
                     {(profile?.display_name ?? profile?.username ?? "?")[0].toUpperCase()}

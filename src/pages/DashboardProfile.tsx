@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { profileApi, configApi, uploadApi } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { Switch } from "@/components/ui/Switch";
-import { cn } from "@/lib/utils";
+import { cn, assetUrl } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 const inputClass =
@@ -494,7 +494,7 @@ export default function DashboardProfile() {
             <div className="flex flex-col items-center gap-4">
               <div className="relative h-20 w-20 rounded-full bg-white/[0.06] overflow-hidden">
                 {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                  <img src={assetUrl(profile.avatar_url)} alt="" className="h-full w-full object-cover" />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center text-xl font-bold text-[#3f3f46]">
                     {(profile?.display_name ?? profile?.username ?? "?")[0].toUpperCase()}
@@ -532,7 +532,7 @@ export default function DashboardProfile() {
             <div className="space-y-3">
               <div className="h-28 rounded-lg bg-white/[0.04] overflow-hidden">
                 {profile?.banner_url ? (
-                  <img src={profile.banner_url} alt="" className="h-full w-full object-cover" />
+                  <img src={assetUrl(profile.banner_url)} alt="" className="h-full w-full object-cover" />
                 ) : (
                   <div className="h-full flex items-center justify-center text-[12px] text-[#3f3f46]">
                     No banner

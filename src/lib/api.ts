@@ -1,4 +1,4 @@
-const API_URL = '/api';
+const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '') + '/api';
 
 function getToken(): string | null {
   return localStorage.getItem('kio_token');
@@ -336,7 +336,8 @@ export const uploadApi = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Upload failed');
-    return `${API_URL.replace('/api', '')}${data.url}`;
+    const base = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+    return `${base}${data.url}`;
   },
   async image(file: File) {
     return this.upload(file, 'link');

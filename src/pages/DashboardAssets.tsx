@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { uploadApi, profileApi, configApi } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
-import { cn } from "@/lib/utils";
+import { cn, assetUrl } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 const MAX_STORAGE = 200 * 1024 * 1024;
@@ -306,7 +306,7 @@ export default function DashboardAssets() {
                 <div key={f.id} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-white/[0.04] bg-white/[0.01] hover:bg-white/[0.02] transition-colors">
                   <div className="w-11 h-11 rounded-lg border border-white/[0.06] bg-white/[0.02] overflow-hidden shrink-0 flex items-center justify-center">
                     {isImage ? (
-                      <img src={f.url} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                      <img src={assetUrl(f.url)} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
                     ) : (
                       cat ? <cat.icon size={16} className="text-[#3f3f46]" /> : <FileText size={16} className="text-[#3f3f46]" />
                     )}

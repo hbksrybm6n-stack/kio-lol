@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Upload, Trash2, Save, MousePointer2, Check, X } from "lucide-react";
 import { configApi, uploadApi } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
-import { cn } from "@/lib/utils";
+import { cn, assetUrl } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 interface CursorFile {
@@ -189,7 +189,7 @@ export default function DashboardCursors() {
                   >
                     <div className="w-10 h-10 rounded-lg bg-white/[0.03] border border-white/[0.06] flex items-center justify-center shrink-0">
                       {c.url && c.type === "png" ? (
-                        <img src={c.url} alt="" className="w-6 h-6 object-contain" />
+                        <img src={assetUrl(c.url)} alt="" className="w-6 h-6 object-contain" />
                       ) : (
                         <MousePointer2 size={16} className="text-[#3f3f46]" />
                       )}
@@ -249,7 +249,7 @@ export default function DashboardCursors() {
                 style={{ width: size, height: size }}
               >
                 {activeUrl && enabled ? (
-                  <img src={activeUrl} alt="" className="w-full h-full object-contain" />
+                  <img src={assetUrl(activeUrl)} alt="" className="w-full h-full object-contain" />
                 ) : (
                   <MousePointer2 size={Math.max(size * 0.5, 12)} className="text-[#a1a1aa]" />
                 )}
