@@ -30,7 +30,7 @@ services:
       - key: CAPTCHA_SECRET
         value: kio-lol-captcha-2026-secret
       - key: TURSO_DB_URL
-        value: ""
+        value: libsql://kiolol-hbksrybm6n-stack.aws-ap-northeast-1.turso.io
       - key: TURSO_AUTH_TOKEN
-        value: ""
+        value: eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJleHAiOjE4MTkzNjkyNDEsImlhdCI6MTc4NzgzMzI0MSwiaWQiOiIwMWEwNDMyYS0wNzAxLTc1MGItYjExMS02OWEwNjk1ZmVhOTgiLCJraWQiOiIxSUZRcG9pNXZuWUJWaXA0bmE4SVNaV3RZQ3NIREE5Q1RWa1VWbUxIOHU0IiwicmlkIjoiYzgzZDEwZDEtZjcxMS00ZWRhLWE1MWEtODlmMDJkM2QzNWQyIn0.K_SMl8bGZ06BSM1S7aP8paoF8c8fpuJqpNlQzjAPQRCU2sJTA6oQaNosBJG6VF0Emt_aaQ9LvppkvyDL4l85CA
     healthCheckPath: /api/health
