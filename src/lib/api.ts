@@ -215,6 +215,9 @@ export const badgesApi = {
 };
 
 export const templatesApi = {
+  async list() {
+    return apiFetch('/templates');
+  },
   async getPublic(limit = 20) {
     return apiFetch(`/templates/public?limit=${limit}`);
   },

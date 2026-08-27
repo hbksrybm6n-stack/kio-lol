@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Eye, Link2, Award, Sparkles, Palette, BarChart3, Shield, Globe, Zap } from "lucide-react";
+import { Eye, Link2, Award, Sparkles, Palette, BarChart3, Shield, Globe, Zap, ChevronDown, Check, Crown, Infinity, Headphones, MousePointer2 } from "lucide-react";
 
 interface Leader {
   id: string;
@@ -58,43 +58,142 @@ const RANK_COLORS: Record<number, string> = {
 };
 
 const FEATURES = [
+  { icon: Palette, title: "Custom Themes", description: "Full control over colors, fonts, backgrounds, and layout.", color: "#8b5cf6" },
+  { icon: Link2, title: "Smart Links", description: "Groups, scheduling, password protection, and click tracking.", color: "#3b82f6" },
+  { icon: Sparkles, title: "Effects & Music", description: "Particles, snow, matrix rain, audio visualizers, and more.", color: "#ec4899" },
+  { icon: BarChart3, title: "Analytics", description: "Real-time views, device stats, countries, and conversion rates.", color: "#22c55e" },
+  { icon: Shield, title: "Admin Tools", description: "User management, audit logs, announcements, and moderation.", color: "#f59e0b" },
+  { icon: Globe, title: "Discovery", description: "Trending profiles, featured sections, and public directory.", color: "#06b6d4" },
+  { icon: Headphones, title: "Music Player", description: "Upload tracks, audio visualizer, playlist support, and autoplay.", color: "#f43f5e" },
+  { icon: MousePointer2, title: "Custom Cursor", description: "Upload your own cursor with trails, glow, and particle effects.", color: "#a855f7" },
+  { icon: Zap, title: "Premium Effects", description: "Animated gradients, scanlines, noise, vignette, and 3D tilt.", color: "#eab308" },
+];
+
+const TEMPLATES_PREVIEW = [
+  { name: "Midnight", category: "dark", colors: ["#1a1a2e", "#16213e", "#0f3460"], uses: 1240 },
+  { name: "Neon Pulse", category: "neon", colors: ["#0a0a0a", "#ff006e", "#8338ec"], uses: 890 },
+  { name: "Clean Slate", category: "minimal", colors: ["#f8f9fa", "#e9ecef", "#dee2e6"], uses: 2100 },
+  { name: "Ocean Deep", category: "nature", colors: ["#023e8a", "#0077b6", "#00b4d8"], uses: 560 },
+];
+
+const PRICING_PLANS = [
   {
-    icon: Palette,
-    title: "Custom Themes",
-    description: "Full control over colors, fonts, backgrounds, and layout.",
-    color: "#8b5cf6",
+    name: "Free",
+    price: "$0",
+    period: "forever",
+    description: "Everything you need to get started.",
+    features: [
+      "Profile page",
+      "Basic links & socials",
+      "Basic backgrounds",
+      "Music player",
+      "Basic badges",
+      "Basic analytics",
+      "Community templates",
+    ],
+    cta: "Get Started",
+    highlighted: false,
   },
   {
-    icon: Link2,
-    title: "Smart Links",
-    description: "Groups, scheduling, password protection, and click tracking.",
-    color: "#3b82f6",
+    name: "Premium",
+    price: "$4.99",
+    period: "/month",
+    description: "Unlock the full power of your profile.",
+    features: [
+      "Everything in Free",
+      "Video backgrounds",
+      "Custom cursor",
+      "Custom fonts (TTF/OTF/WOFF)",
+      "Advanced effects",
+      "Advanced analytics",
+      "500 MB storage",
+      "Premium templates",
+      "Custom CSS",
+      "Custom domain",
+    ],
+    cta: "Go Premium",
+    highlighted: true,
   },
   {
-    icon: Sparkles,
-    title: "Effects & Music",
-    description: "Particles, snow, matrix rain, audio visualizers, and more.",
-    color: "#ec4899",
-  },
-  {
-    icon: BarChart3,
-    title: "Analytics",
-    description: "Real-time views, device stats, countries, and conversion rates.",
-    color: "#22c55e",
-  },
-  {
-    icon: Shield,
-    title: "Admin Tools",
-    description: "User management, audit logs, announcements, and moderation.",
-    color: "#f59e0b",
-  },
-  {
-    icon: Globe,
-    title: "Discovery",
-    description: "Trending profiles, featured sections, and public directory.",
-    color: "#06b6d4",
+    name: "Ultimate",
+    price: "$9.99",
+    period: "/month",
+    description: "For creators who want it all.",
+    features: [
+      "Everything in Premium",
+      "Multiple profiles",
+      "Background rotation",
+      "2 GB storage",
+      "Priority support",
+      "Early access features",
+      "Template builder",
+      "API access",
+      "Verified badge",
+      "Custom sections",
+    ],
+    cta: "Go Ultimate",
+    highlighted: false,
   },
 ];
+
+const FAQ_ITEMS = [
+  {
+    q: "What is kio.lol?",
+    a: "kio.lol is a bio-profile platform where you can create a stunning profile page with custom links, backgrounds, music, effects, and more. Share your online presence with a single URL.",
+  },
+  {
+    q: "Is it free to use?",
+    a: "Yes! kio.lol is free forever. You get a profile, basic links, backgrounds, music, and analytics at no cost. Premium plans unlock advanced features like video backgrounds, custom cursors, and more.",
+  },
+  {
+    q: "Can I use my own domain?",
+    a: "Premium users can set up a custom domain for their profile page. Simply configure your DNS settings and we'll handle the rest.",
+  },
+  {
+    q: "Can I upload my own music?",
+    a: "Yes! Upload MP3, WAV, OGG, or M4A files. Your music plays automatically when visitors enter your profile. You can also add cover art.",
+  },
+  {
+    q: "How do templates work?",
+    a: "Browse our template gallery, preview any template, and apply it to your profile with one click. Template settings like colors, fonts, backgrounds, and effects are applied — your personal data stays intact.",
+  },
+  {
+    q: "Can I create my own templates?",
+    a: "Yes! Use our Template Builder to design custom templates. Save them, preview them, and publish them for others to use.",
+  },
+  {
+    q: "What analytics are available?",
+    a: "Track profile views, unique visitors, link clicks, social clicks, device types, browsers, countries, and referrers. Data is available in real-time with charts for daily, weekly, and monthly periods.",
+  },
+  {
+    q: "Can I integrate Discord?",
+    a: "Yes! Connect your Discord account to show your status, activity, and custom status on your profile. Our Discord bot tracks your presence in real-time.",
+  },
+];
+
+function FAQItem({ item }: { item: { q: string; a: string } }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-b border-white/[0.04] last:border-0">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center justify-between w-full py-5 text-left cursor-pointer"
+      >
+        <span className="text-[14px] font-medium text-white pr-4">{item.q}</span>
+        <ChevronDown
+          size={16}
+          className={`text-[#52525b] shrink-0 transition-transform duration-300 ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      <div
+        className="overflow-hidden transition-all duration-300"
+        style={{ maxHeight: open ? "200px" : "0", opacity: open ? 1 : 0 }}
+      >
+        <p className="text-[13px] text-[#71717a] leading-relaxed pb-5">{item.a}</p>
+      </div>
+    </div>
+  );
+}
 
 export default function LandingPage() {
   const [leaders, setLeaders] = useState<Leader[]>([]);
@@ -116,6 +215,12 @@ export default function LandingPage() {
           <span className="font-medium text-[#3f3f46]">.lol</span>
         </span>
         <div className="flex items-center gap-2">
+          <Link to="/discover" className="hidden sm:block px-4 py-2 rounded-full text-[13px] font-medium text-[#a1a1aa] hover:text-white transition-colors">
+            Discover
+          </Link>
+          <Link to="/templates" className="hidden sm:block px-4 py-2 rounded-full text-[13px] font-medium text-[#a1a1aa] hover:text-white transition-colors">
+            Templates
+          </Link>
           <Link to="/login" className="px-4 py-2 rounded-full text-[13px] font-medium text-[#a1a1aa] hover:text-white transition-colors">
             Sign in
           </Link>
@@ -125,6 +230,7 @@ export default function LandingPage() {
         </div>
       </nav>
 
+      {/* Hero */}
       <section className="relative z-10 max-w-3xl mx-auto px-5 pt-16 pb-20 sm:pt-24 sm:pb-28 flex flex-col items-center text-center gap-8">
         <FadeIn>
           <div className="mb-2">
@@ -163,6 +269,7 @@ export default function LandingPage() {
         </FadeIn>
       </section>
 
+      {/* Features */}
       <section className="relative z-10 max-w-5xl mx-auto px-5 pb-20">
         <FadeIn>
           <div className="text-center mb-10">
@@ -189,6 +296,46 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Templates Preview */}
+      <section className="relative z-10 max-w-5xl mx-auto px-5 pb-20">
+        <FadeIn>
+          <div className="text-center mb-10">
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">Templates</h2>
+            <p className="text-[14px] text-[#52525b] mt-2">Choose from professionally designed templates</p>
+          </div>
+        </FadeIn>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {TEMPLATES_PREVIEW.map((t, i) => (
+            <FadeIn key={t.name} delay={i * 80}>
+              <Link to="/templates" className="block rounded-xl border border-white/[0.04] bg-[#0a0a0a] overflow-hidden hover:border-white/[0.08] hover:bg-white/[0.02] transition-all group">
+                <div className="h-28 relative overflow-hidden">
+                  <div className="absolute inset-0 flex">
+                    {t.colors.map((c, ci) => (
+                      <div key={ci} className="flex-1" style={{ backgroundColor: c }} />
+                    ))}
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                </div>
+                <div className="p-3">
+                  <p className="text-[13px] font-medium text-white">{t.name}</p>
+                  <p className="text-[11px] text-[#52525b] capitalize">{t.category} · {t.uses.toLocaleString()} uses</p>
+                </div>
+              </Link>
+            </FadeIn>
+          ))}
+        </div>
+
+        <FadeIn delay={400}>
+          <div className="text-center mt-6">
+            <Link to="/templates" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-white/10 text-[13px] font-medium text-white hover:bg-white/[0.05] transition-all">
+              Browse all templates
+            </Link>
+          </div>
+        </FadeIn>
+      </section>
+
+      {/* Leaderboard */}
       {leaders.length > 0 && (
         <section className="relative z-10 max-w-2xl mx-auto px-5 pb-24">
           <FadeIn>
@@ -211,7 +358,6 @@ export default function LandingPage() {
                   >
                     {i + 1}
                   </span>
-
                   {l.avatar_url ? (
                     <img src={l.avatar_url} alt="" className="w-10 h-10 rounded-xl object-cover shrink-0" />
                   ) : (
@@ -219,31 +365,24 @@ export default function LandingPage() {
                       <span className="text-[14px] font-bold text-violet-400">{(l.display_name || l.username)[0]?.toUpperCase()}</span>
                     </div>
                   )}
-
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-semibold text-white leading-tight truncate">
-                      {l.display_name || l.username}
-                    </p>
+                    <p className="text-[13px] font-semibold text-white leading-tight truncate">{l.display_name || l.username}</p>
                     <p className="text-[11px] text-[#52525b] leading-tight truncate">@{l.username}</p>
                   </div>
-
                   <div className="flex items-center gap-3 shrink-0">
                     {l.badge_count > 0 && (
                       <span className="flex items-center gap-1 text-[10px] text-amber-400">
-                        <Award size={11} />
-                        {l.badge_count}
+                        <Award size={11} />{l.badge_count}
                       </span>
                     )}
                     {l.link_count > 0 && (
                       <span className="flex items-center gap-1 text-[10px] text-[#52525b]">
-                        <Link2 size={11} />
-                        {l.link_count}
+                        <Link2 size={11} />{l.link_count}
                       </span>
                     )}
                     {l.view_count > 0 && (
                       <span className="flex items-center gap-1 text-[11px] text-[#71717a] font-medium tabular-nums">
-                        <Eye size={12} />
-                        {l.view_count.toLocaleString()}
+                        <Eye size={12} />{l.view_count.toLocaleString()}
                       </span>
                     )}
                   </div>
@@ -254,6 +393,69 @@ export default function LandingPage() {
         </section>
       )}
 
+      {/* Pricing */}
+      <section className="relative z-10 max-w-5xl mx-auto px-5 pb-20">
+        <FadeIn>
+          <div className="text-center mb-10">
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">Simple pricing</h2>
+            <p className="text-[14px] text-[#52525b] mt-2">Start free, upgrade when you need more</p>
+          </div>
+        </FadeIn>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {PRICING_PLANS.map((plan, i) => (
+            <FadeIn key={plan.name} delay={i * 100}>
+              <div className={`rounded-2xl border p-6 h-full flex flex-col ${plan.highlighted ? "border-violet-400/30 bg-violet-400/[0.04]" : "border-white/[0.04] bg-[#0a0a0a]"}`}>
+                {plan.highlighted && (
+                  <span className="inline-flex items-center gap-1 self-start px-2 py-0.5 rounded-full bg-violet-400/10 text-[10px] font-semibold text-violet-400 uppercase tracking-wider mb-4">
+                    <Crown size={10} /> Popular
+                  </span>
+                )}
+                <h3 className="text-lg font-bold text-white">{plan.name}</h3>
+                <div className="flex items-baseline gap-1 mt-2 mb-1">
+                  <span className="text-3xl font-extrabold text-white">{plan.price}</span>
+                  <span className="text-[13px] text-[#52525b]">{plan.period}</span>
+                </div>
+                <p className="text-[13px] text-[#71717a] mb-5">{plan.description}</p>
+                <ul className="space-y-2.5 mb-6 flex-1">
+                  {plan.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2 text-[12px] text-[#a1a1aa]">
+                      <Check size={14} className="text-emerald-400 shrink-0 mt-0.5" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  to="/register"
+                  className={`block text-center py-2.5 rounded-xl text-[13px] font-bold transition-all ${plan.highlighted ? "bg-white text-black hover:bg-white/90" : "bg-white/[0.06] text-white hover:bg-white/[0.1]"}`}
+                >
+                  {plan.cta}
+                </Link>
+              </div>
+            </FadeIn>
+          ))}
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="relative z-10 max-w-2xl mx-auto px-5 pb-20">
+        <FadeIn>
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-extrabold tracking-tight text-white">Frequently asked questions</h2>
+            <p className="text-[14px] text-[#52525b] mt-2">Everything you need to know</p>
+          </div>
+        </FadeIn>
+
+        <FadeIn delay={100}>
+          <div className="rounded-2xl border border-white/[0.04] bg-[#0a0a0a] px-6">
+            {FAQ_ITEMS.map((item) => (
+              <FAQItem key={item.q} item={item} />
+            ))}
+          </div>
+        </FadeIn>
+      </section>
+
+      {/* CTA */}
       <section className="relative z-10 max-w-3xl mx-auto px-5 pb-20 text-center">
         <FadeIn>
           <div className="p-8 sm:p-12 rounded-3xl border border-white/[0.06] bg-white/[0.02]">
@@ -266,6 +468,7 @@ export default function LandingPage() {
         </FadeIn>
       </section>
 
+      {/* Footer */}
       <footer className="relative z-10 border-t border-white/[0.04] py-8">
         <div className="max-w-5xl mx-auto px-5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -276,10 +479,11 @@ export default function LandingPage() {
             <span className="text-[11px] text-[#3f3f46]">&copy; {new Date().getFullYear()}</span>
           </div>
           <div className="flex items-center gap-4 text-[12px] text-[#52525b]">
+            <Link to="/templates" className="hover:text-white transition-colors">Templates</Link>
+            <Link to="/discover" className="hover:text-white transition-colors">Discover</Link>
             <Link to="/legal/terms" className="hover:text-white transition-colors">Terms</Link>
             <Link to="/legal/privacy" className="hover:text-white transition-colors">Privacy</Link>
             <Link to="/legal/dmca" className="hover:text-white transition-colors">DMCA</Link>
-            <Link to="/discover" className="hover:text-white transition-colors">Discover</Link>
           </div>
         </div>
       </footer>

@@ -13,6 +13,10 @@ const UsernameSetupPage = lazy(() => import('@/pages/UsernameSetupPage'));
 const DashboardLayout = lazy(() => import('@/pages/DashboardLayout'));
 const DashboardOverview = lazy(() => import('@/pages/DashboardOverview'));
 const DashboardProfile = lazy(() => import('@/pages/DashboardProfile'));
+const DashboardAssets = lazy(() => import('@/pages/DashboardAssets'));
+const DashboardMyProfile = lazy(() => import('@/pages/DashboardMyProfile'));
+const DashboardCursors = lazy(() => import('@/pages/DashboardCursors'));
+const DashboardFonts = lazy(() => import('@/pages/DashboardFonts'));
 const DashboardAppearance = lazy(() => import('@/pages/DashboardAppearance'));
 const DashboardLinks = lazy(() => import('@/pages/DashboardLinks'));
 const DashboardSocials = lazy(() => import('@/pages/DashboardSocials'));
@@ -29,6 +33,7 @@ const DashboardAccount = lazy(() => import('@/pages/DashboardAccount'));
 const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
 const DiscoveryPage = lazy(() => import('@/pages/DiscoveryPage'));
+const TemplateGallery = lazy(() => import('@/pages/TemplateGallery'));
 const LegalPage = lazy(() => import('@/pages/LegalPage'));
 const VerifyEmailPage = lazy(() => import('@/pages/VerifyEmailPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
@@ -92,6 +97,10 @@ export default function App() {
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<DashboardOverview />} />
             <Route path="profile" element={<DashboardProfile />} />
+            <Route path="myprofile" element={<DashboardMyProfile />} />
+            <Route path="assets" element={<DashboardAssets />} />
+            <Route path="cursors" element={<DashboardCursors />} />
+            <Route path="fonts" element={<DashboardFonts />} />
             <Route path="appearance" element={<DashboardAppearance />} />
             <Route path="links" element={<DashboardLinks />} />
             <Route path="socials" element={<DashboardSocials />} />
@@ -109,11 +118,13 @@ export default function App() {
 
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/discover" element={<DiscoveryPage />} />
+          <Route path="/templates" element={<TemplateGallery />} />
           <Route path="/legal/:slug" element={<LegalPage />} />
           <Route path="/forbidden" element={<ForbiddenPage />} />
 
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/@:username" element={<ProfilePage />} />
+          <Route path="/:username" element={<ProfilePage />} />
 
           <Route path="/error" element={<ErrorPage />} />
           <Route path="*" element={<NotFoundPage />} />

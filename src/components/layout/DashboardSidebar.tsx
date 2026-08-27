@@ -17,6 +17,10 @@ import {
   Shield,
   UserCog,
   X,
+  CircleUserRound,
+  FolderOpen,
+  Type,
+  MousePointer2,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { cn } from "@/lib/utils";
@@ -32,7 +36,12 @@ const NAV_SECTIONS = [
     label: "PROFILE",
     items: [
       { to: "/dashboard", icon: LayoutDashboard, label: "Overview", end: true },
+      { to: "/dashboard/myprofile", icon: CircleUserRound, label: "My Profile" },
+      { to: "/dashboard/profile", icon: UserCog, label: "Edit Profile" },
       { to: "/dashboard/appearance", icon: Palette, label: "Appearance" },
+      { to: "/dashboard/assets", icon: FolderOpen, label: "Assets" },
+      { to: "/dashboard/fonts", icon: Type, label: "Fonts" },
+      { to: "/dashboard/cursors", icon: MousePointer2, label: "Cursors" },
       { to: "/dashboard/links", icon: Link2, label: "Links" },
       { to: "/dashboard/socials", icon: Share2, label: "Socials" },
       { to: "/dashboard/background", icon: Image, label: "Background" },

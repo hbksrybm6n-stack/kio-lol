@@ -169,7 +169,7 @@ export type SocialPlatform =
   | 'instagram' | 'twitch' | 'telegram' | 'spotify' | 'linkedin'
   | 'email' | 'website' | 'other' | 'snapchat' | 'reddit'
   | 'pinterest' | 'facebook' | 'mastodon' | 'threads' | 'kick'
-  | 'bluesky' | 'paypal' | 'cashapp' | 'venmo';
+  | 'bluesky' | 'paypal' | 'cashapp' | 'venmo' | 'steam' | 'roblox';
 
 export const SOCIAL_PLATFORMS: Record<SocialPlatform, { name: string; color: string; icon: string }> = {
   discord: { name: 'Discord', color: '#5865F2', icon: 'discord' },
@@ -193,6 +193,8 @@ export const SOCIAL_PLATFORMS: Record<SocialPlatform, { name: string; color: str
   paypal: { name: 'PayPal', color: '#003087', icon: 'paypal' },
   cashapp: { name: 'Cash App', color: '#00D632', icon: 'cashapp' },
   venmo: { name: 'Venmo', color: '#3D95CE', icon: 'venmo' },
+  steam: { name: 'Steam', color: '#1B2838', icon: 'steam' },
+  roblox: { name: 'Roblox', color: '#E2231A', icon: 'roblox' },
   email: { name: 'Email', color: '#EA4335', icon: 'mail' },
   website: { name: 'Website', color: '#6B7280', icon: 'globe' },
   other: { name: 'Other', color: '#8B5CF6', icon: 'link' },

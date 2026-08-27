@@ -7,6 +7,10 @@ import DashboardSidebar from "@/components/layout/DashboardSidebar";
 const PAGE_TITLES: Record<string, string> = {
   "/dashboard": "Overview",
   "/dashboard/profile": "Profile",
+  "/dashboard/myprofile": "My Profile",
+  "/dashboard/assets": "Assets",
+  "/dashboard/cursors": "Cursors",
+  "/dashboard/fonts": "Fonts",
   "/dashboard/appearance": "Appearance",
   "/dashboard/links": "Links",
   "/dashboard/socials": "Socials",
